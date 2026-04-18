@@ -1,0 +1,159 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using ConnectHub.MessageService.Data;
+using ConnectHub.MessageService.Interfaces;
+using ConnectHub.MessageService.Hubs;
+using MessageServiceImpl = ConnectHub.MessageService.Services.MessageService; // alias fixes CS0118
+
+namespace ConnectHub.MessageService
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // ========== 1. DATABASE ==========
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Console.WriteLine("ERROR: Database connection string is missing!");
+                throw new Exception("Database connection string not found");
+            }
+
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(connectionString));
+
+            // ========== 2. JWT AUTHENTICATION ==========
+            var jwtSecret = builder.Configuration["JWT:Secret"];
+            if (string.IsNullOrEmpty(jwtSecret))
+            {
+                jwtSecret = "This-Is-My-Super-Secret-Key-For-JWT-At-Least-32-Characters-Long-ChangeThis!";
+            }
+
+            var key = System.Text.Encoding.UTF8.GetBytes(jwtSecret);
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    };
+
+                    // Allow JWT via query string for SignalR
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+                            var path = context.HttpContext.Request.Path;
+                            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                            {
+                                context.Token = accessToken;
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
+
+            // ========== 3. REGISTER SERVICES ==========
+            builder.Services.AddScoped<IMessageService, MessageServiceImpl>(); // uses alias
+
+            // ========== 4. SIGNALR ==========
+            builder.Services.AddSignalR();
+
+            // ========== 5. CONTROLLERS ==========
+            builder.Services.AddControllers();
+
+            // ========== 6. SWAGGER ==========
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "ConnectHub Message API",
+                    Version = "v1",
+                    Description = "Direct Messaging System for ConnectHub Chat"
+                });
+
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "Enter 'Bearer' followed by your JWT token",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
+            // ========== 7. CORS ==========
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
+            // ========== BUILD THE APP ==========
+            var app = builder.Build();
+
+            // ========== MIDDLEWARE PIPELINE ==========
+            // Always show Swagger (works in Docker environment too)
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
+            app.UseCors("AllowAll");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapControllers();
+            app.MapHub<ChatHub>("/chatHub");
+
+            // ========== AUTO-MIGRATE DATABASE ==========
+            try
+            {
+                using (var scope = app.Services.CreateScope())
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    Console.WriteLine("Checking database connection...");
+                    await dbContext.Database.MigrateAsync();
+                    Console.WriteLine("Database migration completed successfully!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Database migration failed: {ex.Message}");
+                Console.WriteLine("Continuing anyway...");
+            }
+
+            Console.WriteLine("Message Service running on http://localhost:5003");
+            Console.WriteLine("Swagger UI: http://localhost:5002/swagger");
+
+            await app.RunAsync();
+        }
+    }
+}
