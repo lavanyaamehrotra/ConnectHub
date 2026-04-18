@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: connecthub-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: ConnectHubAuthDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - connecthub-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./ConnectHub.AuthService
+      dockerfile: Dockerfile
+    container_name: connecthub-auth
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      # All config comes from appsettings.Docker.json automatically
+      # No need to repeat connection strings or secrets here
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - connecthub-network
+    restart: on-failure
+
+  message-service:
+    build:
+      context: ./ConnectHub.MessageService
+      dockerfile: Dockerfile
+    container_name: connecthub-message
+    ports:
+      - "5002:5003"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      # All config comes from appsettings.Docker.json automatically
+      # No need to repeat connection strings or secrets here
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+
+networks:
+  connecthub-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

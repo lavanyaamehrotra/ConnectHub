@@ -1,4 +1,3 @@
-using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -10,25 +9,24 @@ using ConnectHub.AuthService.Interfaces;
 using ConnectHub.AuthService.Repositories;
 using ConnectHub.AuthService.Services;
 
-// ========== LOAD .env FILE ==========
-// This loads your secrets from .env file (which is ignored by Git)
-Env.Load();
+// NOTE: No more DotNetEnv / Env.Load() needed.
+// - Local dev  → reads from appsettings.Development.json
+// - Docker     → reads from appsettings.Docker.json + docker-compose environment variables
+// Both work automatically via builder.Configuration
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========== 1. DATABASE CONFIGURATION (from .env) ==========
-var connectionString = $"Host={Env.GetString("DB_HOST")};" +
-                       $"Port={Env.GetString("DB_PORT")};" +
-                       $"Database={Env.GetString("DB_NAME")};" +
-                       $"Username={Env.GetString("DB_USER")};" +
-                       $"Password={Env.GetString("DB_PASSWORD")}";
+// ========== 1. DATABASE CONFIGURATION ==========
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ========== 2. JWT SETTINGS (from .env) ==========
-var jwtSecret = Env.GetString("JWT_SECRET");
-var jwtExpiration = int.Parse(Env.GetString("JWT_EXPIRATION"));
+// ========== 2. JWT SETTINGS ==========
+var jwtSecret = builder.Configuration["JWT:Secret"]
+    ?? throw new InvalidOperationException("JWT:Secret not configured.");
+var jwtExpiration = int.TryParse(builder.Configuration["JWT:ExpirationInMinutes"], out var exp) ? exp : 60;
 
 var jwtSettings = new JwtSettings
 {
@@ -60,11 +58,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ========== 4. GOOGLE OAUTH (from .env) ==========
+// ========== 4. GOOGLE OAUTH ==========
 builder.Services.Configure<GoogleAuthSettings>(options =>
 {
-    options.ClientId = Env.GetString("GOOGLE_CLIENT_ID");
-    options.ClientSecret = Env.GetString("GOOGLE_CLIENT_SECRET");
+    options.ClientId = builder.Configuration["Google:ClientId"] ?? "";
+    options.ClientSecret = builder.Configuration["Google:ClientSecret"] ?? "";
 });
 
 // ========== 5. DEPENDENCY INJECTION ==========
@@ -80,13 +78,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo 
-    { 
-        Title = "ConnectHub Auth API", 
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ConnectHub Auth API",
         Version = "v1",
         Description = "Authentication and User Management API for ConnectHub Chat"
     });
-    
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Enter 'Bearer' followed by your JWT token",
@@ -95,7 +93,7 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-    
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -127,13 +125,10 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ========== 9. MIDDLEWARE ==========
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger always enabled (works in Docker environment too)
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -146,9 +141,7 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.Migrate();
 }
 
-// Display URLs
-Console.WriteLine(" Auth Service is running!");
-Console.WriteLine("Swagger UI: https://localhost:5001/swagger");
-Console.WriteLine("Swagger UI (HTTP): http://localhost:5000/swagger");
+Console.WriteLine("Auth Service is running!");
+Console.WriteLine("Swagger UI: http://localhost:5000/swagger");
 
 app.Run();
