@@ -1,0 +1,7 @@
+# ========== SECRETS & CONFIGURATION ==========
+# Ignore .env file with secrets (MOST IMPORTANT!)
+.env
+# ========== BUILD OUTPUTS ==========
+# Ignore build folders
+bin/
+obj/
