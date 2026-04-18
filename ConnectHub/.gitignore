@@ -1,11 +1,6 @@
 # ========== SECRETS & CONFIGURATION ==========
 # Ignore .env file with secrets (MOST IMPORTANT!)
 .env
-
-# Ignore local configuration overrides
-*.local.json
-appsettings.Local.json
-
 # ========== BUILD OUTPUTS ==========
 # Ignore build folders
 bin/
