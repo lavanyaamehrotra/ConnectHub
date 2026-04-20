@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: ConnectHubAuthDb
+      # Note: MessageService uses ConnectHubMessageDb and ChatRoomService uses ConnectHubChatRoomDb
+      # These are auto-created by EF Core migrations on startup
     ports:
       - "5433:5432"
     volumes:
@@ -27,8 +29,6 @@ services:
       - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
-      # All config comes from appsettings.Docker.json automatically
-      # No need to repeat connection strings or secrets here
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,11 +42,27 @@ services:
       dockerfile: Dockerfile
     container_name: connecthub-message
     ports:
-      - "5002:5003"
+      - "5003:5003"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
-      # All config comes from appsettings.Docker.json automatically
-      # No need to repeat connection strings or secrets here
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+
+  chatroom-service:
+    build:
+      context: ./ConnectHub.ChatRoomService
+      dockerfile: Dockerfile
+    container_name: connecthub-chatroom
+    ports:
+      - "5004:5004"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
     depends_on:
       postgres:
         condition: service_healthy
