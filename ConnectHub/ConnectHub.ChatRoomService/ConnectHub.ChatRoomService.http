@@ -1,0 +1,6 @@
+@ConnectHub.ChatRoomService_HostAddress = http://localhost:5149
+
+GET {{ConnectHub.ChatRoomService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
