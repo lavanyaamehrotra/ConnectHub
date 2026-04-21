@@ -2,36 +2,34 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ConnectHub.MessageService.DTOs
 {
-    /// <summary>
-    /// 📤 SEND MESSAGE REQUEST
-    /// What the client sends when they want to send a message
-    /// This is the INPUT format for the API
-    /// </summary>
+    // ========== REQUEST DTOS ==========
+
     public class SendMessageRequest
     {
-        /// <summary>
-        /// Who is receiving this message? (UserId from Auth Service)
-        /// [Required] - Must be provided, cannot be empty
-        /// </summary>
         [Required]
         public Guid ReceiverId { get; set; }
 
-        /// <summary>
-        /// The actual message text
-        /// MinLength(1) - Cannot be empty
-        /// MaxLength(2000) - Prevents abuse
-        /// </summary>
         [Required]
         [MinLength(1)]
         [MaxLength(2000)]
         public string Content { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// ✏️ EDIT MESSAGE REQUEST
-    /// What client sends when editing a message
-    /// Only the content can be changed
-    /// </summary>
+    public class SendMediaMessageRequest
+    {
+        [Required]
+        public Guid ReceiverId { get; set; }
+
+        [Required]
+        public string MessageType { get; set; } = "TEXT"; // TEXT, IMAGE, FILE, AUDIO
+
+        public string? MediaUrl { get; set; }
+
+        public string? Content { get; set; }
+
+        public Guid? ReplyToMessageId { get; set; }
+    }
+
     public class EditMessageRequest
     {
         [Required]
@@ -40,51 +38,52 @@ namespace ConnectHub.MessageService.DTOs
         public string Content { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// 📦 MESSAGE RESPONSE
-    /// What the API returns to the client
-    /// This is the OUTPUT format
-    /// Notice: No sensitive data, just message info
-    /// </summary>
+    // ========== RESPONSE DTOS ==========
+
     public class MessageResponse
     {
         public Guid MessageId { get; set; }
         public Guid SenderId { get; set; }
         public Guid ReceiverId { get; set; }
         public string Content { get; set; } = string.Empty;
+        public string MessageType { get; set; } = "TEXT";
+        public string? MediaUrl { get; set; }
         public bool IsRead { get; set; }
+        public DateTime? ReadAt { get; set; }
         public bool IsEdited { get; set; }
         public bool IsDeleted { get; set; }
         public DateTime SentAt { get; set; }
         public DateTime? EditedAt { get; set; }
+        public Guid? ReplyToMessageId { get; set; }
     }
 
-    /// <summary>
-    /// 💬 CONVERSATION RESPONSE
-    /// Returns all messages between two users
-    /// Includes the other user's ID and all messages
-    /// </summary>
     public class ConversationResponse
     {
-        /// <summary>
-        /// The ID of the person you're talking to
-        /// </summary>
         public Guid OtherUserId { get; set; }
-        
-        /// <summary>
-        /// List of all messages in this conversation
-        /// Sorted oldest to newest
-        /// </summary>
         public List<MessageResponse> Messages { get; set; } = new();
     }
 
-    /// <summary>
-    /// 🔍 SEARCH RESPONSE
-    /// Returns messages matching search term
-    /// </summary>
     public class SearchMessagesResponse
     {
         public List<MessageResponse> Messages { get; set; } = new();
         public int TotalCount { get; set; }
+    }
+
+    public class RecentChatResponse
+    {
+        public Guid UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public MessageResponse LastMessage { get; set; } = null!;
+        public int UnreadCount { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime LastSeen { get; set; }
+    }
+
+    public class UnreadCountResponse
+    {
+        public int TotalUnread { get; set; }
+        public Dictionary<Guid, int> UnreadByUser { get; set; } = new();
     }
 }

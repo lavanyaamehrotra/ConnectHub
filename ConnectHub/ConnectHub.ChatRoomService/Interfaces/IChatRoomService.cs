@@ -10,6 +10,9 @@ namespace ConnectHub.ChatRoomService.Interfaces
         Task<bool> DeleteRoomAsync(Guid userId, Guid roomId);
         Task<List<ChatRoomResponse>> GetUserRoomsAsync(Guid userId);
         Task<ChatRoomResponse> GetRoomAsync(Guid roomId);
+        Task<List<ChatRoomResponse>> GetPublicRoomsAsync();  // NEW
+        Task<bool> IsUserInRoomAsync(Guid userId, Guid roomId);  // NEW
+        Task<int> GetMemberCountAsync(Guid roomId);  // NEW
 
         // Member management
         Task<bool> JoinRoomAsync(Guid userId, Guid roomId);
@@ -18,6 +21,7 @@ namespace ConnectHub.ChatRoomService.Interfaces
         Task<bool> AddMemberAsync(Guid adminUserId, Guid roomId, AddMemberRequest request);
         Task<bool> RemoveMemberAsync(Guid adminUserId, Guid roomId, Guid memberUserId);
         Task<bool> MakeAdminAsync(Guid adminUserId, Guid roomId, MakeAdminRequest request);
+        Task<bool> UpdateMemberRoleAsync(Guid adminUserId, Guid roomId, UpdateMemberRoleRequest request);  // NEW
 
         // Messaging
         Task<RoomMessageResponse> SendMessageAsync(Guid userId, Guid roomId, SendRoomMessageRequest request);

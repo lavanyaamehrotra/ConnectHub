@@ -72,6 +72,26 @@ services:
       - connecthub-network
     restart: on-failure
 
+  hub-service:
+    build:
+      context: ./ConnectHub.HubService
+      dockerfile: Dockerfile
+    container_name: connecthub-hub
+    ports:
+      - "5006:5006"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+    depends_on:
+      auth-service:
+        condition: service_started
+      message-service:
+        condition: service_started
+      chatroom-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+
 networks:
   connecthub-network:
     driver: bridge

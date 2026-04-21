@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ConnectHub.ChatRoomService.Models
 {
     /// <summary>
-    ///  ROOM MEMBER - Represents a user's membership in a chat room
+    /// 👥 ROOM MEMBER - Represents a user's membership in a chat room
     /// </summary>
     public class RoomMember
     {
@@ -14,12 +14,15 @@ namespace ConnectHub.ChatRoomService.Models
         public Guid RoomId { get; set; }
 
         [Required]
-        public Guid UserId { get; set; }  // UserId from Auth Service
+        public Guid UserId { get; set; }
 
         [Required]
-        public string Role { get; set; } = "Member";  // "Admin" or "Member"
+        [MaxLength(20)]
+        public string Role { get; set; } = "MEMBER"; // ADMIN, MODERATOR, MEMBER
 
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsActive { get; set; } = true;
 
         // Navigation property
         public ChatRoom Room { get; set; } = null!;

@@ -25,9 +25,13 @@ namespace ConnectHub.ChatRoomService.Services
             {
                 RoomId = Guid.NewGuid(),
                 Name = request.Name,
+                Description = request.Description,
+                RoomType = request.RoomType,
+                AvatarUrl = request.AvatarUrl,
                 CreatedBy = userId,
-                IsPrivate = request.IsPrivate,
-                CreatedAt = DateTime.UtcNow
+                MaxMembers = request.MaxMembers,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
 
             _context.ChatRooms.Add(room);
@@ -36,8 +40,9 @@ namespace ConnectHub.ChatRoomService.Services
             {
                 RoomId = room.RoomId,
                 UserId = userId,
-                Role = "Admin",
-                JoinedAt = DateTime.UtcNow
+                Role = "ADMIN",
+                JoinedAt = DateTime.UtcNow,
+                IsActive = true
             };
             _context.RoomMembers.Add(member);
 
@@ -45,7 +50,7 @@ namespace ConnectHub.ChatRoomService.Services
 
             _logger.LogInformation("Room {RoomName} created by {UserId}", room.Name, userId);
 
-            return MapToRoomResponse(room, _context);
+            return await MapToRoomResponseAsync(room);
         }
 
         public async Task<ChatRoomResponse> UpdateRoomAsync(Guid userId, Guid roomId, UpdateRoomRequest request)
@@ -55,15 +60,26 @@ namespace ConnectHub.ChatRoomService.Services
                 throw new Exception("Room not found");
 
             var isAdmin = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.Role == "Admin");
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.Role == "ADMIN");
 
             if (!isAdmin)
                 throw new Exception("Only admin can update room");
 
-            room.Name = request.Name;
+            if (!string.IsNullOrEmpty(request.Name))
+                room.Name = request.Name;
+
+            if (request.Description != null)
+                room.Description = request.Description;
+
+            if (request.AvatarUrl != null)
+                room.AvatarUrl = request.AvatarUrl;
+
+            if (request.MaxMembers.HasValue)
+                room.MaxMembers = request.MaxMembers.Value;
+
             await _context.SaveChangesAsync();
 
-            return MapToRoomResponse(room, _context);
+            return await MapToRoomResponseAsync(room);
         }
 
         public async Task<bool> DeleteRoomAsync(Guid userId, Guid roomId)
@@ -73,12 +89,12 @@ namespace ConnectHub.ChatRoomService.Services
                 throw new Exception("Room not found");
 
             var isAdmin = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.Role == "Admin");
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.Role == "ADMIN");
 
             if (!isAdmin)
                 throw new Exception("Only admin can delete room");
 
-            _context.ChatRooms.Remove(room);
+            room.IsActive = false;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Room {RoomId} deleted by {UserId}", roomId, userId);
@@ -88,14 +104,18 @@ namespace ConnectHub.ChatRoomService.Services
 
         public async Task<List<ChatRoomResponse>> GetUserRoomsAsync(Guid userId)
         {
-            // Fetch rooms first, then map in memory (avoids EF projection issue)
             var rooms = await _context.RoomMembers
-                .Where(m => m.UserId == userId)
+                .Where(m => m.UserId == userId && m.IsActive)
                 .Include(m => m.Room)
                 .Select(m => m.Room)
                 .ToListAsync();
 
-            return rooms.Select(r => MapToRoomResponse(r, _context)).ToList();
+            var responses = new List<ChatRoomResponse>();
+            foreach (var room in rooms)
+            {
+                responses.Add(await MapToRoomResponseAsync(room));
+            }
+            return responses;
         }
 
         public async Task<ChatRoomResponse> GetRoomAsync(Guid roomId)
@@ -104,7 +124,34 @@ namespace ConnectHub.ChatRoomService.Services
             if (room == null)
                 throw new Exception("Room not found");
 
-            return MapToRoomResponse(room, _context);
+            return await MapToRoomResponseAsync(room);
+        }
+
+        public async Task<List<ChatRoomResponse>> GetPublicRoomsAsync()
+        {
+            var rooms = await _context.ChatRooms
+                .Where(r => r.RoomType == "PUBLIC" && r.IsActive)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            var responses = new List<ChatRoomResponse>();
+            foreach (var room in rooms)
+            {
+                responses.Add(await MapToRoomResponseAsync(room));
+            }
+            return responses;
+        }
+
+        public async Task<bool> IsUserInRoomAsync(Guid userId, Guid roomId)
+        {
+            return await _context.RoomMembers
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.IsActive);
+        }
+
+        public async Task<int> GetMemberCountAsync(Guid roomId)
+        {
+            return await _context.RoomMembers
+                .CountAsync(m => m.RoomId == roomId && m.IsActive);
         }
 
         // ========== MEMBER MANAGEMENT ==========
@@ -114,6 +161,15 @@ namespace ConnectHub.ChatRoomService.Services
             var room = await _context.ChatRooms.FindAsync(roomId);
             if (room == null)
                 throw new Exception("Room not found");
+
+            // Check if room is private
+            if (room.RoomType == "PRIVATE")
+                throw new Exception("Cannot join private room. You need an invitation.");
+
+            // Check member limit
+            var currentCount = await GetMemberCountAsync(roomId);
+            if (currentCount >= room.MaxMembers)
+                throw new Exception("Room has reached maximum member limit");
 
             var existing = await _context.RoomMembers
                 .AnyAsync(m => m.RoomId == roomId && m.UserId == userId);
@@ -125,8 +181,9 @@ namespace ConnectHub.ChatRoomService.Services
             {
                 RoomId = roomId,
                 UserId = userId,
-                Role = "Member",
-                JoinedAt = DateTime.UtcNow
+                Role = "MEMBER",
+                JoinedAt = DateTime.UtcNow,
+                IsActive = true
             };
             _context.RoomMembers.Add(member);
             await _context.SaveChangesAsync();
@@ -137,24 +194,25 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<bool> LeaveRoomAsync(Guid userId, Guid roomId)
         {
             var member = await _context.RoomMembers
-                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == userId);
+                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == userId && m.IsActive);
 
             if (member == null)
                 throw new Exception("Not a member of this room");
 
-            if (member.Role == "Admin")
+            // If admin is leaving, assign another admin
+            if (member.Role == "ADMIN")
             {
                 var otherAdmin = await _context.RoomMembers
-                    .Where(m => m.RoomId == roomId && m.UserId != userId)
+                    .Where(m => m.RoomId == roomId && m.UserId != userId && m.IsActive)
                     .FirstOrDefaultAsync();
 
                 if (otherAdmin != null)
                 {
-                    otherAdmin.Role = "Admin";
+                    otherAdmin.Role = "ADMIN";
                 }
             }
 
-            _context.RoomMembers.Remove(member);
+            member.IsActive = false;
             await _context.SaveChangesAsync();
 
             return true;
@@ -163,12 +221,13 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<List<MemberResponse>> GetRoomMembersAsync(Guid roomId)
         {
             var members = await _context.RoomMembers
-                .Where(m => m.RoomId == roomId)
+                .Where(m => m.RoomId == roomId && m.IsActive)
                 .Select(m => new MemberResponse
                 {
                     UserId = m.UserId,
                     Role = m.Role,
-                    JoinedAt = m.JoinedAt
+                    JoinedAt = m.JoinedAt,
+                    IsActive = m.IsActive
                 })
                 .ToListAsync();
 
@@ -178,13 +237,21 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<bool> AddMemberAsync(Guid adminUserId, Guid roomId, AddMemberRequest request)
         {
             var isAdmin = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "Admin");
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "ADMIN" && m.IsActive);
 
             if (!isAdmin)
                 throw new Exception("Only admin can add members");
 
+            var room = await _context.ChatRooms.FindAsync(roomId);
+            if (room == null)
+                throw new Exception("Room not found");
+
+            var currentCount = await GetMemberCountAsync(roomId);
+            if (currentCount >= room.MaxMembers)
+                throw new Exception("Room has reached maximum member limit");
+
             var existing = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == request.UserId);
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == request.UserId && m.IsActive);
 
             if (existing)
                 throw new Exception("User is already a member");
@@ -193,8 +260,9 @@ namespace ConnectHub.ChatRoomService.Services
             {
                 RoomId = roomId,
                 UserId = request.UserId,
-                Role = "Member",
-                JoinedAt = DateTime.UtcNow
+                Role = "MEMBER",
+                JoinedAt = DateTime.UtcNow,
+                IsActive = true
             };
             _context.RoomMembers.Add(member);
             await _context.SaveChangesAsync();
@@ -205,18 +273,18 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<bool> RemoveMemberAsync(Guid adminUserId, Guid roomId, Guid memberUserId)
         {
             var isAdmin = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "Admin");
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "ADMIN" && m.IsActive);
 
             if (!isAdmin)
                 throw new Exception("Only admin can remove members");
 
             var member = await _context.RoomMembers
-                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == memberUserId);
+                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == memberUserId && m.IsActive);
 
             if (member == null)
                 throw new Exception("Member not found");
 
-            _context.RoomMembers.Remove(member);
+            member.IsActive = false;
             await _context.SaveChangesAsync();
 
             return true;
@@ -225,18 +293,41 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<bool> MakeAdminAsync(Guid adminUserId, Guid roomId, MakeAdminRequest request)
         {
             var isAdmin = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "Admin");
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "ADMIN" && m.IsActive);
 
             if (!isAdmin)
                 throw new Exception("Only admin can make other admins");
 
             var member = await _context.RoomMembers
-                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == request.UserId);
+                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == request.UserId && m.IsActive);
 
             if (member == null)
                 throw new Exception("Member not found");
 
-            member.Role = "Admin";
+            member.Role = "ADMIN";
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> UpdateMemberRoleAsync(Guid adminUserId, Guid roomId, UpdateMemberRoleRequest request)
+        {
+            var isAdmin = await _context.RoomMembers
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == adminUserId && m.Role == "ADMIN" && m.IsActive);
+
+            if (!isAdmin)
+                throw new Exception("Only admin can update member roles");
+
+            if (request.Role != "ADMIN" && request.Role != "MODERATOR" && request.Role != "MEMBER")
+                throw new Exception("Invalid role. Must be ADMIN, MODERATOR, or MEMBER");
+
+            var member = await _context.RoomMembers
+                .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == request.UserId && m.IsActive);
+
+            if (member == null)
+                throw new Exception("Member not found");
+
+            member.Role = request.Role;
             await _context.SaveChangesAsync();
 
             return true;
@@ -247,7 +338,7 @@ namespace ConnectHub.ChatRoomService.Services
         public async Task<RoomMessageResponse> SendMessageAsync(Guid userId, Guid roomId, SendRoomMessageRequest request)
         {
             var isMember = await _context.RoomMembers
-                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId);
+                .AnyAsync(m => m.RoomId == roomId && m.UserId == userId && m.IsActive);
 
             if (!isMember)
                 throw new Exception("You must be a member to send messages");
@@ -270,7 +361,6 @@ namespace ConnectHub.ChatRoomService.Services
 
         public async Task<List<RoomMessageResponse>> GetRoomMessagesAsync(Guid roomId, int page = 1, int pageSize = 50)
         {
-            // Fetch first, then map in memory (avoids EF projection issue)
             var messages = await _context.RoomMessages
                 .Where(m => m.RoomId == roomId && !m.IsDeleted)
                 .OrderByDescending(m => m.SentAt)
@@ -278,22 +368,27 @@ namespace ConnectHub.ChatRoomService.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            return messages.Select(m => MapToMessageResponse(m)).ToList();
+            return messages.Select(MapToMessageResponse).ToList();
         }
 
         // ========== MAPPERS ==========
 
-        private static ChatRoomResponse MapToRoomResponse(ChatRoom room, ApplicationDbContext context)
+        private async Task<ChatRoomResponse> MapToRoomResponseAsync(ChatRoom room)
         {
-            var memberCount = context.RoomMembers.Count(m => m.RoomId == room.RoomId);
+            var memberCount = await _context.RoomMembers
+                .CountAsync(m => m.RoomId == room.RoomId && m.IsActive);
 
             return new ChatRoomResponse
             {
                 RoomId = room.RoomId,
                 Name = room.Name,
+                Description = room.Description,
+                RoomType = room.RoomType,
+                AvatarUrl = room.AvatarUrl,
                 CreatedBy = room.CreatedBy,
-                IsPrivate = room.IsPrivate,
                 CreatedAt = room.CreatedAt,
+                IsActive = room.IsActive,
+                MaxMembers = room.MaxMembers,
                 MemberCount = memberCount
             };
         }
