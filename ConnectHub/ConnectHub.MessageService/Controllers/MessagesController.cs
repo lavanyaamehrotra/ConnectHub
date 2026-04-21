@@ -26,12 +26,59 @@ namespace ConnectHub.MessageService.Controllers
             return Ok(result);
         }
 
+        [HttpPost("send-media")]
+        public async Task<IActionResult> SendMediaMessage([FromBody] SendMediaMessageRequest request)
+        {
+            var userId = GetUserId();
+            var result = await _messageService.SendMediaMessageAsync(userId, request);
+            return Ok(result);
+        }
+
         [HttpGet("conversation/{otherUserId}")]
         public async Task<IActionResult> GetConversation(Guid otherUserId)
         {
             var userId = GetUserId();
             var result = await _messageService.GetConversationAsync(userId, otherUserId);
             return Ok(result);
+        }
+
+        [HttpGet("recent")]
+        public async Task<IActionResult> GetRecentChats()
+        {
+            var userId = GetUserId();
+            var result = await _messageService.GetRecentChatsAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var userId = GetUserId();
+            var result = await _messageService.GetUnreadCountAsync(userId);
+            return Ok(new { UnreadCount = result });
+        }
+
+        [HttpPut("mark-all-read/{otherUserId}")]
+        public async Task<IActionResult> MarkAllAsRead(Guid otherUserId)
+        {
+            var userId = GetUserId();
+            var result = await _messageService.MarkAllAsReadAsync(userId, otherUserId);
+            return Ok(new { MarkedCount = result });
+        }
+
+        [HttpGet("{messageId}")]
+        public async Task<IActionResult> GetMessageById(Guid messageId)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _messageService.GetMessageByIdAsync(userId, messageId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPut("edit/{messageId}")]

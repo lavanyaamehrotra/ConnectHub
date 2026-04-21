@@ -36,11 +36,33 @@ namespace ConnectHub.ChatRoomService.Controllers
             return Ok(result);
         }
 
+        [HttpGet("public")]
+        public async Task<IActionResult> GetPublicRooms()
+        {
+            var result = await _chatRoomService.GetPublicRoomsAsync();
+            return Ok(result);
+        }
+
         [HttpGet("{roomId}")]
         public async Task<IActionResult> GetRoom(Guid roomId)
         {
             var result = await _chatRoomService.GetRoomAsync(roomId);
             return Ok(result);
+        }
+
+        [HttpGet("{roomId}/member-count")]
+        public async Task<IActionResult> GetMemberCount(Guid roomId)
+        {
+            var result = await _chatRoomService.GetMemberCountAsync(roomId);
+            return Ok(new { Count = result });
+        }
+
+        [HttpGet("{roomId}/is-member")]
+        public async Task<IActionResult> IsUserInRoom(Guid roomId)
+        {
+            var userId = GetUserId();
+            var result = await _chatRoomService.IsUserInRoomAsync(userId, roomId);
+            return Ok(new { IsMember = result });
         }
 
         [HttpPut("{roomId}")]
@@ -149,6 +171,21 @@ namespace ConnectHub.ChatRoomService.Controllers
             {
                 var userId = GetUserId();
                 await _chatRoomService.MakeAdminAsync(userId, roomId, request);
+                return Ok(new { Success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("{roomId}/members/role")]
+        public async Task<IActionResult> UpdateMemberRole(Guid roomId, [FromBody] UpdateMemberRoleRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                await _chatRoomService.UpdateMemberRoleAsync(userId, roomId, request);
                 return Ok(new { Success = true });
             }
             catch (Exception ex)

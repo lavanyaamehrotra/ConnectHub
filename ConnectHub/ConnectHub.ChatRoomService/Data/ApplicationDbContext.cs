@@ -18,11 +18,12 @@ namespace ConnectHub.ChatRoomService.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Indexes for performance
+            // Unique constraint: One user can join a room only once
             modelBuilder.Entity<RoomMember>()
                 .HasIndex(m => new { m.RoomId, m.UserId })
-                .IsUnique();  // One user can join a room only once
+                .IsUnique();
 
+            // Indexes for performance
             modelBuilder.Entity<RoomMessage>()
                 .HasIndex(m => m.RoomId);
 
@@ -31,6 +32,16 @@ namespace ConnectHub.ChatRoomService.Data
 
             modelBuilder.Entity<ChatRoom>()
                 .HasIndex(r => r.CreatedAt);
+
+            modelBuilder.Entity<ChatRoom>()
+                .HasIndex(r => r.RoomType);
+
+            // Global query filter for soft delete
+            modelBuilder.Entity<ChatRoom>()
+                .HasQueryFilter(r => r.IsActive);
+
+            modelBuilder.Entity<RoomMember>()
+                .HasQueryFilter(m => m.IsActive);
         }
     }
 }

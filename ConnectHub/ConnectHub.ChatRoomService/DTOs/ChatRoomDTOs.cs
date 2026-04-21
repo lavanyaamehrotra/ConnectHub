@@ -4,9 +4,6 @@ namespace ConnectHub.ChatRoomService.DTOs
 {
     // ========== REQUEST DTOS ==========
 
-    /// <summary>
-    ///  CREATE ROOM REQUEST
-    /// </summary>
     public class CreateRoomRequest
     {
         [Required]
@@ -14,23 +11,31 @@ namespace ConnectHub.ChatRoomService.DTOs
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        public bool IsPrivate { get; set; } = false;
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        public string RoomType { get; set; } = "PUBLIC"; // PUBLIC, PRIVATE, DIRECT
+
+        public string? AvatarUrl { get; set; }
+
+        public int MaxMembers { get; set; } = 500;
     }
 
-    /// <summary>
-    ///  UPDATE ROOM REQUEST
-    /// </summary>
     public class UpdateRoomRequest
     {
         [Required]
         [MinLength(3)]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        public string? AvatarUrl { get; set; }
+
+        public int? MaxMembers { get; set; }
     }
 
-    /// <summary>
-    /// SEND MESSAGE REQUEST
-    /// </summary>
     public class SendRoomMessageRequest
     {
         [Required]
@@ -39,52 +44,51 @@ namespace ConnectHub.ChatRoomService.DTOs
         public string Content { get; set; } = string.Empty;
     }
 
-    /// <summary>
-   ///  ADD MEMBER REQUEST
-    /// </summary>
     public class AddMemberRequest
     {
         [Required]
         public Guid UserId { get; set; }
     }
 
-    /// <summary>
-    ///  MAKE ADMIN REQUEST
-    /// </summary>
     public class MakeAdminRequest
     {
         [Required]
         public Guid UserId { get; set; }
     }
 
+    public class UpdateMemberRoleRequest
+    {
+        [Required]
+        public Guid UserId { get; set; }
+
+        [Required]
+        public string Role { get; set; } = string.Empty; // ADMIN, MODERATOR, MEMBER
+    }
+
     // ========== RESPONSE DTOS ==========
 
-    /// <summary>
-    ///  CHAT ROOM RESPONSE
-    /// </summary>
     public class ChatRoomResponse
     {
         public Guid RoomId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string RoomType { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
         public Guid CreatedBy { get; set; }
-        public bool IsPrivate { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; }
+        public int MaxMembers { get; set; }
         public int MemberCount { get; set; }
     }
 
-    /// <summary>
-    /// MEMBER RESPONSE
-    /// </summary>
     public class MemberResponse
     {
         public Guid UserId { get; set; }
         public string Role { get; set; } = string.Empty;
         public DateTime JoinedAt { get; set; }
+        public bool IsActive { get; set; }
     }
 
-    /// <summary>
-    /// MESSAGE RESPONSE
-    /// </summary>
     public class RoomMessageResponse
     {
         public Guid MessageId { get; set; }
