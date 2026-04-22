@@ -121,6 +121,22 @@ namespace ConnectHub.AuthService.Controllers
 
             return Ok(user);
         }
+        /// <summary>
+        /// GET USER EMAIL - Called internally by NotificationService
+        /// GET /api/user/{id}/email
+        /// AllowAnonymous - internal service-to-service call, no JWT needed
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("{id}/email")]
+        public async Task<IActionResult> GetUserEmail(Guid id)
+        {
+            var user = await _authService.GetUserByIdAsync(id);
+
+            if (user == null)
+                return NotFound();
+
+            return Ok(new { Email = user.Email });
+        }
 
         /// <summary>
         /// HELPER - Extract User ID from JWT token

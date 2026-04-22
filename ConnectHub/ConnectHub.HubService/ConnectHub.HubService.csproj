@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- JWT Bearer: protects Hub and REST endpoints with [Authorize] -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-    <!-- Swashbuckle: Swagger UI for PresenceController testing -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <!-- UC4: Redis for distributed presence tracking -->
+    <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
   </ItemGroup>
 
 </Project>
