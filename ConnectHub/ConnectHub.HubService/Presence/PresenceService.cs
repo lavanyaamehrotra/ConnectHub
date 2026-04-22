@@ -1,181 +1,162 @@
-using System.Collections.Concurrent;
+using StackExchange.Redis;
+using System.Text.Json;
 using ConnectHub.HubService.Models;
 
 namespace ConnectHub.HubService.Presence
 {
     // ============================================================
-    // WHAT IS THIS FILE?
-    // Implementation of IPresenceService.
-    // Matches the class diagram which shows TWO dictionaries:
+    // UC4 — Redis-backed PresenceService
     //
-    // _connections: ConcurrentDictionary<Guid, HashSet<string>>
-    //   Key   = UserId
-    //   Value = set of active connectionIds for that user
-    //   → Answers: "Is this user online? Which connections do they have?"
+    // WHY REDIS?
+    // The old ConcurrentDictionary lives in one process.
+    // If you run 2 HubService pods, each has its own dictionary =
+    // "User A is online" on pod-1 but "offline" on pod-2. Broken.
+    // Redis is a shared external store — all pods see the same data.
     //
-    // _userInfo: ConcurrentDictionary<string, UserConnection>
-    //   Key   = connectionId
-    //   Value = UserConnection (userId + timestamp + device)
-    //   → Answers: "Who owns this connectionId? When did they connect?"
+    // REDIS DATA STRUCTURES USED:
     //
-    // WHY SINGLETON?
-    // All Hub instances share ONE PresenceService instance.
-    // If Scoped: each connection gets a fresh empty dictionary = broken.
+    // 1. SET  key: "presence:user:{userId}"
+    //    value: { connectionId1, connectionId2, ... }
+    //    → "Which connections does this user have?"
+    //    → TTL: 24h (auto-expires stale entries after server crash)
     //
-    // WHY TWO DICTIONARIES?
-    // _connections: fast lookup by userId → "is John online?"
-    // _userInfo:    fast lookup by connectionId → "who is conn-abc?"
-    //               also provides rich metadata for admin monitoring
+    // 2. HASH key: "presence:connections"
+    //    field: connectionId   value: JSON of UserConnection
+    //    → "Who owns this connectionId?"
+    //    → Used by GetOnlineUsersInfoAsync()
+    //
+    // 3. SET  key: "presence:online_users"
+    //    value: { userId1, userId2, ... }
+    //    → "Who is currently online?"
+    //    → Used by GetOnlineUserIdsAsync()
     // ============================================================
     public class PresenceService : IPresenceService
     {
-        // userId → { connectionId1, connectionId2, ... }
-        // One user can have multiple connections (multi-device)
-        private readonly ConcurrentDictionary<Guid, HashSet<string>> _connections
-            = new ConcurrentDictionary<Guid, HashSet<string>>();
-
-        // connectionId → UserConnection metadata
-        // Fast reverse lookup: "who owns this connection?"
-        private readonly ConcurrentDictionary<string, UserConnection> _userInfo
-            = new ConcurrentDictionary<string, UserConnection>();
-
-        // Lock for HashSet operations (HashSet is not thread-safe itself)
-        private readonly object _lock = new object();
-
+        private readonly IDatabase _db;
         private readonly ILogger<PresenceService> _logger;
 
-        public PresenceService(ILogger<PresenceService> logger)
+        // Key helpers — keeps key names consistent
+        private static string UserKey(Guid userId)      => $"presence:user:{userId}";
+        private const  string ConnectionsHash           =  "presence:connections";
+        private const  string OnlineUsersSet            =  "presence:online_users";
+        private static readonly TimeSpan UserKeyTtl     = TimeSpan.FromHours(24);
+
+        public PresenceService(IConnectionMultiplexer redis, ILogger<PresenceService> logger)
         {
+            _db     = redis.GetDatabase();
             _logger = logger;
         }
 
         // -----------------------------------------------------------
         // Called from ChatHub.OnConnectedAsync()
-        //
-        // Adds the connectionId to the user's active connections set.
-        // Also stores metadata in _userInfo for admin monitoring.
+        // 1. Add connectionId to the user's Redis SET
+        // 2. Store UserConnection metadata in the connections HASH
+        // 3. Add userId to the online-users SET
         // -----------------------------------------------------------
-        public void UserConnected(Guid userId, string connectionId)
+        public async Task UserConnectedAsync(Guid userId, string connectionId)
         {
-            lock (_lock)
-            {
-                var connections = _connections.GetOrAdd(userId, _ => new HashSet<string>());
-                connections.Add(connectionId);
-            }
+            // Add this connectionId to the user's set
+            await _db.SetAddAsync(UserKey(userId), connectionId);
 
-            // Store connection metadata for GetOnlineUsersInfo()
-            _userInfo[connectionId] = new UserConnection
+            // Refresh TTL so active users never expire mid-session
+            await _db.KeyExpireAsync(UserKey(userId), UserKeyTtl);
+
+            // Store connection metadata (for GetOnlineUsersInfoAsync)
+            var info = new UserConnection
             {
                 ConnectionId = connectionId,
-                UserId = userId,
-                ConnectedAt = DateTime.UtcNow
+                UserId       = userId,
+                ConnectedAt  = DateTime.UtcNow
             };
+            await _db.HashSetAsync(ConnectionsHash, connectionId, JsonSerializer.Serialize(info));
 
-            _logger.LogInformation("User {UserId} connected. ConnId: {ConnId}", userId, connectionId);
+            // Track this userId as online
+            await _db.SetAddAsync(OnlineUsersSet, userId.ToString());
+
+            _logger.LogInformation("User {UserId} connected via Redis. ConnId: {ConnId}", userId, connectionId);
         }
 
         // -----------------------------------------------------------
         // Called from ChatHub.OnDisconnectedAsync()
-        //
-        // Removes this one connectionId. If it was the user's last
-        // connection, removes them from _connections entirely.
+        // 1. Remove connectionId from user's SET
+        // 2. If SET is now empty → user is offline, remove from online SET
+        // 3. Remove connection metadata from HASH
         // -----------------------------------------------------------
-        public void UserDisconnected(Guid userId, string connectionId)
+        public async Task UserDisconnectedAsync(Guid userId, string connectionId)
         {
-            lock (_lock)
-            {
-                if (_connections.TryGetValue(userId, out var connections))
-                {
-                    connections.Remove(connectionId);
+            await _db.SetRemoveAsync(UserKey(userId), connectionId);
+            await _db.HashDeleteAsync(ConnectionsHash, connectionId);
 
-                    if (connections.Count == 0)
-                    {
-                        _connections.TryRemove(userId, out _);
-                        _logger.LogInformation("User {UserId} is now OFFLINE", userId);
-                    }
+            // Check if user has any remaining connections
+            var remaining = await _db.SetLengthAsync(UserKey(userId));
+            if (remaining == 0)
+            {
+                await _db.KeyDeleteAsync(UserKey(userId));
+                await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
+                _logger.LogInformation("User {UserId} is now OFFLINE (Redis)", userId);
+            }
+        }
+
+        // Returns all connectionIds for a user (multi-device support)
+        public async Task<List<string>> GetConnectionsByUserIdAsync(Guid userId)
+        {
+            var members = await _db.SetMembersAsync(UserKey(userId));
+            return members.Select(m => m.ToString()).ToList();
+        }
+
+        // Returns all currently online user IDs
+        public async Task<List<Guid>> GetOnlineUserIdsAsync()
+        {
+            var members = await _db.SetMembersAsync(OnlineUsersSet);
+            return members
+                .Select(m => Guid.TryParse(m.ToString(), out var g) ? g : Guid.Empty)
+                .Where(g => g != Guid.Empty)
+                .ToList();
+        }
+
+        // True if user has at least one active connection
+        public async Task<bool> IsUserOnlineAsync(Guid userId)
+        {
+            return await _db.SetContainsAsync(OnlineUsersSet, userId.ToString());
+        }
+
+        // Total active connections across all users
+        public async Task<int> GetConnectionCountAsync()
+        {
+            var onlineUsers = await GetOnlineUserIdsAsync();
+            var total = 0;
+            foreach (var uid in onlineUsers)
+                total += (int)await _db.SetLengthAsync(UserKey(uid));
+            return total;
+        }
+
+        // Detailed info about all active connections (for admin)
+        public async Task<List<UserConnection>> GetOnlineUsersInfoAsync()
+        {
+            var entries = await _db.HashGetAllAsync(ConnectionsHash);
+            var result  = new List<UserConnection>();
+            foreach (var entry in entries)
+            {
+                if (!entry.Value.IsNullOrEmpty)
+                {
+                    var conn = JsonSerializer.Deserialize<UserConnection>(entry.Value.ToString());
+                    if (conn != null) result.Add(conn);
                 }
             }
-
-            // Remove metadata entry for this connection
-            _userInfo.TryRemove(connectionId, out _);
+            return result;
         }
 
-        // -----------------------------------------------------------
-        // Get all connectionIds for a specific user.
-        // Used when we need to target ALL devices of a user.
-        // (Clients.User() handles this automatically, but this method
-        //  is useful for admin monitoring and debugging.)
-        // -----------------------------------------------------------
-        public List<string> GetConnectionsByUserId(Guid userId)
+        // Force-remove all connections for a user (admin suspend)
+        public async Task ClearUserConnectionsAsync(Guid userId)
         {
-            if (_connections.TryGetValue(userId, out var connections))
-            {
-                lock (_lock)
-                {
-                    return connections.ToList();
-                }
-            }
-            return new List<string>();
-        }
+            var connections = await GetConnectionsByUserIdAsync(userId);
+            foreach (var connId in connections)
+                await _db.HashDeleteAsync(ConnectionsHash, connId);
 
-        // -----------------------------------------------------------
-        // Returns all currently online user IDs.
-        // Sent to newly connected clients for their contact list.
-        // -----------------------------------------------------------
-        public List<Guid> GetOnlineUserIds()
-        {
-            return _connections.Keys.ToList();
-        }
+            await _db.KeyDeleteAsync(UserKey(userId));
+            await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
 
-        // -----------------------------------------------------------
-        // True if user has at least ONE active connection.
-        // Used before broadcasting UserOffline — only do it when
-        // this was the user's LAST connection.
-        // -----------------------------------------------------------
-        public bool IsUserOnline(Guid userId)
-        {
-            return _connections.ContainsKey(userId);
-        }
-
-        // -----------------------------------------------------------
-        // Total count of ALL active WebSocket connections.
-        // John on phone + laptop = 2 connections, 1 online user.
-        // -----------------------------------------------------------
-        public int GetConnectionCount()
-        {
-            lock (_lock)
-            {
-                return _connections.Values.Sum(set => set.Count);
-            }
-        }
-
-        // -----------------------------------------------------------
-        // Detailed info about all active connections.
-        // Returns the _userInfo dictionary values.
-        // Used by PresenceController for admin monitoring.
-        // -----------------------------------------------------------
-        public List<UserConnection> GetOnlineUsersInfo()
-        {
-            return _userInfo.Values.ToList();
-        }
-
-        // -----------------------------------------------------------
-        // Force-clear all connections for a user.
-        // Called when admin suspends/deactivates a user account.
-        // Removes from both dictionaries.
-        // -----------------------------------------------------------
-        public void ClearUserConnections(Guid userId)
-        {
-            lock (_lock)
-            {
-                if (_connections.TryRemove(userId, out var connections))
-                {
-                    foreach (var connId in connections)
-                        _userInfo.TryRemove(connId, out _);
-                }
-            }
-
-            _logger.LogInformation("Cleared all connections for user {UserId}", userId);
+            _logger.LogInformation("Cleared all Redis connections for user {UserId}", userId);
         }
     }
 }

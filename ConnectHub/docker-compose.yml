@@ -1,4 +1,9 @@
 services:
+
+  # ════════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ════════════════════════════════════════════════════════════════
+
   postgres:
     image: postgres:17
     container_name: connecthub-postgres
@@ -6,19 +11,77 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: ConnectHubAuthDb
-      # Note: MessageService uses ConnectHubMessageDb and ChatRoomService uses ConnectHubChatRoomDb
-      # These are auto-created by EF Core migrations on startup
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - connecthub-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── UC4: Redis — distributed presence tracking ────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: connecthub-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 300m
+
+  # ── UC5: RabbitMQ — async notification dispatch ───────────────
+  # Management UI: http://localhost:15672  (guest / guest)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: connecthub-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ════════════════════════════════════════════════════════════════
+  # MICROSERVICES
+  # ════════════════════════════════════════════════════════════════
 
   auth-service:
     build:
@@ -29,12 +92,17 @@ services:
       - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5000
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - connecthub-network
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   message-service:
     build:
@@ -45,6 +113,7 @@ services:
       - "5003:5003"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5003
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,6 +122,10 @@ services:
     networks:
       - connecthub-network
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   chatroom-service:
     build:
@@ -63,6 +136,7 @@ services:
       - "5004:5004"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5004
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,6 +145,10 @@ services:
     networks:
       - connecthub-network
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   hub-service:
     build:
@@ -81,7 +159,10 @@ services:
       - "5006:5006"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5006
     depends_on:
+      redis:
+        condition: service_healthy
       auth-service:
         condition: service_started
       message-service:
@@ -91,10 +172,49 @@ services:
     networks:
       - connecthub-network
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
+  notification-service:
+    build:
+      context: ./ConnectHub.NotificationService
+      dockerfile: Dockerfile
+    container_name: connecthub-notification
+    ports:
+      - "5007:5007"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5007
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      hub-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+# ════════════════════════════════════════════════════════════════
+# NETWORKS
+# ════════════════════════════════════════════════════════════════
 networks:
   connecthub-network:
     driver: bridge
 
+# ════════════════════════════════════════════════════════════════
+# VOLUMES — all data survives container restarts
+# ════════════════════════════════════════════════════════════════
 volumes:
   postgres_data:
+  redis_data:
+  rabbitmq_data:

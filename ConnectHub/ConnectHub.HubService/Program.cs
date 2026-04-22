@@ -2,23 +2,21 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using ConnectHub.HubService.Hubs;
 using ConnectHub.HubService.Interfaces;
 using ConnectHub.HubService.Presence;
 using ConnectHub.HubService.Services;
 
 // ============================================================
-// ConnectHub.HubService — Standalone Real-Time Microservice
+// ConnectHub.HubService — UC4 Redis Update
 //
-// FROM CLASS DIAGRAM (Section 4.4):
-//   • ChatHub registered at /hubs/chat
-//   • IPresenceService registered as AddSingleton so the same
-//     ConcurrentDictionary<int, HashSet<string>> instance is
-//     shared across ALL Hub connections and API controllers.
-//   • IMessageService  registered as Scoped (HTTP client wrapper)
-//   • IChatRoomService registered as Scoped (HTTP client wrapper)
+// CHANGE FROM ORIGINAL:
+//   OLD: builder.Services.AddSingleton<IPresenceService, PresenceService>();
+//   NEW: Register Redis IConnectionMultiplexer first, then PresenceService
+//        is still Singleton but now backed by Redis.
 //
-// PORT: 5006
+// Everything else is unchanged.
 // ============================================================
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,10 +39,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew                = TimeSpan.Zero
         };
 
-        // CRITICAL FOR SIGNALR:
-        // Browsers cannot set Authorization headers on WebSocket connections.
-        // SignalR JS client sends JWT as query string: ?access_token=eyJ...
-        // This event reads it and places it where JwtBearer expects it.
+        // Required for SignalR: browser can't set Authorization header on WebSocket
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -63,16 +58,19 @@ builder.Services.AddAuthorization();
 // ========== 2. SIGNALR ==========
 builder.Services.AddSignalR();
 
-// ========== 3. CUSTOM USER ID PROVIDER (Singleton) ==========
-// Maps JWT NameIdentifier claim → SignalR user identifier.
-// Makes Clients.User(userId) deliver to ALL connections for that user.
+// ========== 3. CUSTOM USER ID PROVIDER ==========
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
-// ========== 4. PRESENCE SERVICE (Singleton) ==========
-// FROM CLASS DIAGRAM:
-// "IPresenceService is registered as AddSingleton so the same
-//  ConcurrentDictionary<int, HashSet<string>> instance is shared
-//  across all Hub connections and API controllers."
+// ========== 4. REDIS — UC4 CHANGE ==========
+// Read Redis connection string from config (falls back to localhost for dev)
+var redisConnection = builder.Configuration.GetConnectionString("Redis")
+    ?? "localhost:6379";
+
+// IConnectionMultiplexer is thread-safe and should be Singleton
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnection));
+
+// PresenceService is now backed by Redis (still registered as Singleton)
 builder.Services.AddSingleton<IPresenceService, PresenceService>();
 
 // ========== 5. HTTP CLIENTS for downstream microservices ==========
@@ -91,19 +89,12 @@ builder.Services.AddHttpClient("ChatRoomService", client =>
     client.Timeout     = TimeSpan.FromSeconds(10);
 });
 
-// ========== 6. SERVICE INTERFACES (Scoped) ==========
-// FROM CLASS DIAGRAM (ChatHub fields):
-//   _messageService  → IMessageService
-//   _roomService     → IChatRoomService
-// Registered Scoped: a new instance per Hub invocation, but they
-// themselves are stateless HTTP wrappers backed by IHttpClientFactory.
+// ========== 6. SERVICE INTERFACES ==========
 builder.Services.AddScoped<IMessageService,  MessageServiceClient>();
 builder.Services.AddScoped<IChatRoomService, ChatRoomServiceClient>();
 
-// ========== 7. CONTROLLERS ==========
+// ========== 7. CONTROLLERS + SWAGGER ==========
 builder.Services.AddControllers();
-
-// ========== 8. SWAGGER ==========
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -111,7 +102,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title       = "ConnectHub Hub Service",
         Version     = "v1",
-        Description = "SignalR ChatHub + Presence Tracking. Hub: ws://localhost:5006/hubs/chat"
+        Description = "SignalR ChatHub + Redis Presence Tracking"
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -128,66 +119,51 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id   = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
-// ========== 9. CORS ==========
-// AllowCredentials() is REQUIRED for SignalR WebSocket upgrade.
-// Must use WithOrigins() (not AllowAnyOrigin) with AllowCredentials.
+// ========== 8. CORS ==========
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
     {
         policy
             .WithOrigins(
-                "http://localhost:4200",   // Angular
-                "http://localhost:3000",   // React
-                "http://localhost:5173",   // Vite / Vue
-                "http://localhost:5000",   // Auth service
-                "http://localhost:5003",   // Message service
-                "http://localhost:5005"    // ChatRoom service
+                "http://localhost:4200",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5000",
+                "http://localhost:5003",
+                "http://localhost:5005"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials(); // REQUIRED for SignalR WebSocket!
+            .AllowCredentials();
     });
 });
 
 // ========== BUILD ==========
 var app = builder.Build();
 
-// ========== MIDDLEWARE PIPELINE ==========
-// ORDER MATTERS: UseCors → UseAuthentication → UseAuthorization → MapHub
-
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseCors("AllowFrontends");
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
-// MAP THE SIGNALR HUB
-// Client connects to: ws://localhost:5006/hubs/chat?access_token=eyJ...
 app.MapHub<ChatHub>("/hubs/chat");
 
-// ========== STARTUP LOG ==========
 Console.WriteLine("==============================================");
-Console.WriteLine("  ConnectHub HubService (UC4 — Real-Time)");
+Console.WriteLine("  ConnectHub HubService (UC4 — Redis Presence)");
 Console.WriteLine("==============================================");
 Console.WriteLine("  SignalR:  ws://localhost:5006/hubs/chat");
 Console.WriteLine("  Presence: http://localhost:5006/api/presence");
 Console.WriteLine("  Swagger:  http://localhost:5006/swagger");
+Console.WriteLine("  Redis:    " + redisConnection);
 Console.WriteLine("==============================================");
 
 await app.RunAsync();
