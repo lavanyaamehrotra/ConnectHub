@@ -79,6 +79,32 @@ services:
         limits:
           memory: 512m
 
+  # ── UC6: Azurite — Azure Blob Storage emulator ────────────────
+  # Blob endpoint: http://localhost:10000/devstoreaccount1
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: connecthub-azurite
+    command: azurite --loose --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite_data:/data
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:10000/devstoreaccount1 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
   # ════════════════════════════════════════════════════════════════
   # MICROSERVICES
   # ════════════════════════════════════════════════════════════════
@@ -204,6 +230,31 @@ services:
         limits:
           memory: 256m
 
+  media-service:
+    build:
+      context: ./ConnectHub.MediaService
+      dockerfile: Dockerfile
+    container_name: connecthub-media
+    ports:
+      - "5008:5008"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5008
+    depends_on:
+      postgres:
+        condition: service_healthy
+      azurite:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
 # ════════════════════════════════════════════════════════════════
 # NETWORKS
 # ════════════════════════════════════════════════════════════════
@@ -218,3 +269,4 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  azurite_data:
