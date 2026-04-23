@@ -255,6 +255,27 @@ services:
         limits:
           memory: 256m
 
+  gateway:
+    build:
+      context: ./ConnectHub.GatewayService
+      dockerfile: Dockerfile
+    container_name: connecthub-gateway
+    ports:
+      - "80:5009"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5009
+    depends_on:
+      - auth-service
+      - message-service
+      - chatroom-service
+      - hub-service
+      - notification-service
+      - media-service
+    networks:
+      - connecthub-network
+    restart: on-failure
+
 # ════════════════════════════════════════════════════════════════
 # NETWORKS
 # ════════════════════════════════════════════════════════════════
