@@ -123,5 +123,22 @@ namespace ConnectHub.ChatRoomService.Repositories
                 .Take(take)
                 .ToListAsync();
         }
+
+        public async Task MarkMessagesAsReadUntilAsync(Guid roomId, DateTime sentAt)
+        {
+            var unreadMessages = await _context.RoomMessages
+                .Where(m => m.RoomId == roomId && !m.IsRead && m.SentAt <= sentAt)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
+            {
+                foreach (var msg in unreadMessages)
+                {
+                    msg.IsRead = true;
+                    msg.ReadAt = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

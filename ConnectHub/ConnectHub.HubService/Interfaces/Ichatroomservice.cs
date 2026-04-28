@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace ConnectHub.HubService.Interfaces
 {
     // ============================================================
@@ -25,5 +29,6 @@ namespace ConnectHub.HubService.Interfaces
 
         Task<object> UpdateRoomMessageAsync(Guid userId, Guid messageId, string newContent, string? token = null);
         Task<Guid?> DeleteRoomMessageAsync(Guid userId, Guid messageId, string? token = null);
+        Task<bool> MarkRoomMessageReadAsync(Guid roomId, Guid messageId, string? token = null);
     }
 }

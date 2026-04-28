@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using ConnectHub.HubService.Interfaces;
 
 namespace ConnectHub.HubService.Services
@@ -60,7 +63,6 @@ namespace ConnectHub.HubService.Services
                 var payload = JsonSerializer.Serialize(new { Content = content, MediaUrl = mediaUrl, MessageType = messageType });
                 var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
 
-                // Note: The URL in the controller was /api/rooms/{roomId}/messages
                 var response = await client.PostAsync($"/api/rooms/{roomId}/messages", httpContent);
                 if (response.IsSuccessStatusCode)
                 {
@@ -153,6 +155,29 @@ namespace ConnectHub.HubService.Services
             return null;
         }
 
+        public async Task<bool> MarkRoomMessageReadAsync(Guid roomId, Guid messageId, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+
+                var response = await client.PostAsync($"/api/rooms/{roomId}/messages/{messageId}/read", null);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var res = JsonSerializer.Deserialize<MarkReadResponse>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return res?.FullyRead ?? false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("ChatRoomService.MarkRoomMessageRead failed: {Msg}", ex.Message);
+            }
+            return false;
+        }
+
         // ── helpers ──────────────────────────────────────────────
         private static void ApplyToken(HttpClient client, string? token)
         {
@@ -164,13 +189,18 @@ namespace ConnectHub.HubService.Services
         private static object BuildFallback(Guid senderId, Guid roomId, string content, string? mediaUrl = null, string? messageType = null) => new
         {
             MessageId = Guid.NewGuid(),
-            SenderId  = senderId,
-            RoomId    = roomId,
-            Content   = content,
-            MediaUrl  = mediaUrl,
+            SenderId = senderId,
+            RoomId = roomId,
+            Content = content,
+            MediaUrl = mediaUrl,
             MessageType = messageType ?? "TEXT",
-            SentAt    = DateTime.UtcNow
+            SentAt = DateTime.UtcNow
         };
+    }
+
+    public class MarkReadResponse
+    {
+        public bool FullyRead { get; set; }
     }
 
     // DTOs for deserialising from ChatRoomService
@@ -191,9 +221,9 @@ namespace ConnectHub.HubService.Services
         public bool IsDeleted { get; set; }
     }
 
-    public class DeleteResponse 
-    { 
-        public bool Success { get; set; } 
-        public Guid? RoomId { get; set; } 
+    public class DeleteResponse
+    {
+        public bool Success { get; set; }
+        public Guid? RoomId { get; set; }
     }
 }

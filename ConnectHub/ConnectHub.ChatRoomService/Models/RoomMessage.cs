@@ -23,6 +23,9 @@ namespace ConnectHub.ChatRoomService.Models
         public string? MessageType { get; set; } = "TEXT";
 
         public bool IsDeleted { get; set; } = false;
+        
+        public bool IsRead { get; set; } = false;
+        public DateTime? ReadAt { get; set; }
 
         public DateTime SentAt { get; set; } = DateTime.UtcNow;
 

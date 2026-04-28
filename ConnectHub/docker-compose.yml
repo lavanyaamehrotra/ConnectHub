@@ -258,6 +258,7 @@ services:
       - ASPNETCORE_URLS=http://+:5008
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubMediaDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - JWT__Secret=${JWT_SECRET}
+      - Azure__BlobConnectionString=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
     depends_on:
       postgres:
         condition: service_healthy

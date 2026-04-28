@@ -154,7 +154,7 @@ namespace ConnectHub.AuthService.Controllers
         /// GET ALL USERS — For Admin Dashboard
         /// GET /api/user/all
         /// </summary>
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [HttpGet("all")]
         public async Task<IActionResult> GetAllUsers()
         {

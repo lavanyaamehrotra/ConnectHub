@@ -21,5 +21,6 @@ namespace ConnectHub.ChatRoomService.Interfaces
         Task UpdateMessageAsync(RoomMessage message);
         Task<RoomMessage?> FindMessageByIdAsync(Guid messageId);
         Task<List<RoomMessage>> GetRoomMessagesAsync(Guid roomId, int skip, int take);
+        Task MarkMessagesAsReadUntilAsync(Guid roomId, DateTime sentAt);
     }
 }

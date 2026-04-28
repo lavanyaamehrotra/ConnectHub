@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using ConnectHub.ChatRoomService.DTOs;
 
 namespace ConnectHub.ChatRoomService.Interfaces
@@ -25,6 +28,7 @@ namespace ConnectHub.ChatRoomService.Interfaces
         // Messaging (Internal use or helper)
         Task<RoomMessageResponse> SendMessage(Guid userId, Guid roomId, SendRoomMessageRequest request);
         Task<List<RoomMessageResponse>> GetRoomMessages(Guid roomId, int page = 1, int pageSize = 50);
+        Task<bool> MarkRoomMessageAsRead(Guid userId, Guid roomId, Guid messageId);
         Task<RoomMessageResponse> UpdateMessage(Guid userId, Guid messageId, string newContent);
         Task<Guid?> DeleteMessage(Guid userId, Guid messageId);
     }

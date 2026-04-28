@@ -183,6 +183,17 @@ namespace ConnectHub.ChatRoomService.Controllers
             }
         }
 
+        [HttpPost("{roomId}/messages/{messageId}/read")]
+        public async Task<IActionResult> MarkRoomMessageRead(Guid roomId, Guid messageId)
+        {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var fullyRead = await _chatRoomService.MarkRoomMessageAsRead(userId, roomId, messageId);
+            return Ok(new { FullyRead = fullyRead });
+        }
+
         [HttpGet("{roomId}/messages")]
         public async Task<IActionResult> GetMessages(Guid roomId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {

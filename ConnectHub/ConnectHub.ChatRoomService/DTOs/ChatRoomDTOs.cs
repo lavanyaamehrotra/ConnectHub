@@ -92,6 +92,8 @@ namespace ConnectHub.ChatRoomService.DTOs
         public string Role { get; set; } = string.Empty;
         public DateTime JoinedAt { get; set; }
         public bool IsActive { get; set; }
+        public Guid? LastReadMessageId { get; set; }
+        public DateTime? LastReadAt { get; set; }
     }
 
     public class RoomMessageResponse
@@ -104,5 +106,7 @@ namespace ConnectHub.ChatRoomService.DTOs
         public string? MessageType { get; set; }
         public DateTime SentAt { get; set; }
         public bool IsDeleted { get; set; }
+        public bool IsRead { get; set; }
+        public DateTime? ReadAt { get; set; }
     }
 }

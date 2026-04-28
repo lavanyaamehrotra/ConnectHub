@@ -198,7 +198,9 @@ namespace ConnectHub.ChatRoomService.Services
                 Username = m.Username,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt,
-                IsActive = m.IsActive
+                IsActive = m.IsActive,
+                LastReadMessageId = m.LastReadMessageId,
+                LastReadAt = m.LastReadAt
             }).ToList();
         }
 
@@ -291,11 +293,20 @@ namespace ConnectHub.ChatRoomService.Services
                 Content = request.Content,
                 MediaUrl = request.MediaUrl,
                 MessageType = request.MessageType ?? "TEXT",
-                IsDeleted = false,
-                SentAt = DateTime.UtcNow
+                SentAt = DateTime.UtcNow,
+                IsRead = false
             };
-
             await _repository.AddMessageAsync(message);
+
+            // NEW: Update sender's last read status immediately
+            var members = await _repository.FindMembersByRoomIdAsync(roomId);
+            var me = members.FirstOrDefault(m => m.UserId == userId && m.IsActive);
+            if (me != null)
+            {
+                me.LastReadMessageId = message.MessageId;
+                me.LastReadAt = message.SentAt;
+                await _repository.UpdateMemberAsync(me);
+            }
 
             return MapToMessageResponse(message);
         }
@@ -304,6 +315,49 @@ namespace ConnectHub.ChatRoomService.Services
         {
             var messages = await _repository.GetRoomMessagesAsync(roomId, (page - 1) * pageSize, pageSize);
             return messages.Select(MapToMessageResponse).ToList();
+        }
+
+        public async Task<bool> MarkRoomMessageAsRead(Guid userId, Guid roomId, Guid messageId)
+        {
+            var message = await _repository.FindMessageByIdAsync(messageId);
+            if (message == null || message.RoomId != roomId) return false;
+
+            var members = await _repository.FindMembersByRoomIdAsync(roomId);
+            var me = members.FirstOrDefault(m => m.UserId == userId && m.IsActive);
+            if (me == null) return false;
+
+            // 1. Update my last read status (idempotent - only move forward)
+            if (me.LastReadAt == null || me.LastReadAt < message.SentAt)
+            {
+                me.LastReadMessageId = messageId;
+                me.LastReadAt = DateTime.UtcNow;
+                await _repository.UpdateMemberAsync(me);
+            }
+
+            // 2. RE-FETCH members to get the absolute latest status from other concurrent readers
+            var freshMembers = await _repository.FindMembersByRoomIdAsync(roomId);
+            
+            // 3. Check if this message is now read by everyone
+            // Relaxed check: 5-second buffer and explicitly include current reader
+            var activeMembers = freshMembers.Where(m => m.IsActive).ToList();
+            var allRead = activeMembers.All(m => m.UserId == message.SenderId || 
+                                              m.UserId == userId || 
+                                              (m.LastReadAt.HasValue && m.LastReadAt.Value.AddSeconds(5) >= message.SentAt)); 
+
+            _logger.LogInformation("DIAGNOSTIC: Room {RoomId}, Message {MsgId} (SentAt: {SentAt}). " +
+                                  "Reader {ReaderId}. AllRead: {AllRead}. " +
+                                  "Members: {Details}", 
+                                  roomId, messageId, message.SentAt.ToString("O"), userId, allRead,
+                                  string.Join(" | ", activeMembers.Select(m => $"{m.Username}({m.UserId}): {(m.LastReadAt.HasValue ? m.LastReadAt.Value.ToString("O") : "null")}")));
+
+            if (allRead && !message.IsRead)
+            {
+                // MARK ALL PREVIOUS MESSAGES IN THIS ROOM AS READ TOO
+                await _repository.MarkMessagesAsReadUntilAsync(roomId, message.SentAt);
+                return true; 
+            }
+
+            return false;
         }
 
         public async Task<RoomMessageResponse> UpdateMessage(Guid userId, Guid messageId, string newContent)
@@ -364,7 +418,9 @@ namespace ConnectHub.ChatRoomService.Services
                 MediaUrl = message.MediaUrl,
                 MessageType = message.MessageType,
                 SentAt = message.SentAt,
-                IsDeleted = message.IsDeleted
+                IsDeleted = message.IsDeleted,
+                IsRead = message.IsRead,
+                ReadAt = message.ReadAt
             };
         }
     }

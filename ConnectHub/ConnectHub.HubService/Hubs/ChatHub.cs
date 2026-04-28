@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using ConnectHub.HubService.Interfaces;
@@ -317,6 +319,28 @@ namespace ConnectHub.HubService.Hubs
             // Update the database in the background
             await _messageService.MarkAsReadAsync(messageId, token);
             _logger.LogInformation("Message {MsgId} read by {ReaderId}", messageId, readerId);
+        }
+
+        public async Task MarkRoomMessageRead(Guid roomId, Guid messageId)
+        {
+            var readerId = GetUserId();
+            var token    = GetAccessToken();
+
+            var fullyRead = await _roomService.MarkRoomMessageReadAsync(roomId, messageId, token);
+            
+            if (fullyRead)
+            {
+                // If it's now fully read, notify the entire group
+                await Clients.Group(roomId.ToString()).SendAsync("RoomMessageRead", new
+                {
+                    MessageId = messageId,
+                    RoomId    = roomId,
+                    IsRead    = true,
+                    ReadAt    = DateTime.UtcNow
+                });
+            }
+            
+            _logger.LogInformation("Room message {MsgId} marked read by {ReaderId} in room {RoomId}. FullyRead: {FullyRead}", messageId, readerId, roomId, fullyRead);
         }
 
         public async Task MarkAllAsRead(Guid otherUserId)
