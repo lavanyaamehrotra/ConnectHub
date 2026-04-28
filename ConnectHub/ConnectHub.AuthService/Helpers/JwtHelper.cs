@@ -33,7 +33,7 @@ namespace ConnectHub.AuthService.Helpers
         /// </summary>
         /// <param name="user">The user to generate token for</param>
         /// <returns>A JWT token string that looks like "eyJhbGciOiJIUzI1NiIs..."</returns>
-        public string GenerateToken(User user)
+        public virtual string GenerateToken(User user)
         {
             ///  CLAIMS - Information stored inside the token
             /// Think of these as passport information (name, ID, photo)
@@ -52,7 +52,10 @@ namespace ConnectHub.AuthService.Helpers
                 
                 /// Custom claim - Display name for chat UI
                 /// Not a standard claim type, so we create our own
-                new Claim("DisplayName", user.DisplayName)
+                new Claim("DisplayName", user.DisplayName),
+
+                /// ROLE - Used for authorization (Admin vs User)
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             /// SIGNING KEY - Used to sign the token (like a wax seal)
@@ -84,7 +87,7 @@ namespace ConnectHub.AuthService.Helpers
         /// </summary>
         /// <param name="token">JWT token string to validate</param>
         /// <returns>ClaimsPrincipal with user info if valid, null if invalid</returns>
-        public ClaimsPrincipal? ValidateToken(string token)
+        public virtual ClaimsPrincipal? ValidateToken(string token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = new SymmetricSecurityKey(_jwtSettings.GetSecretBytes());

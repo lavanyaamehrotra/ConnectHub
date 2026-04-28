@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using ConnectHub.MessageService.Data;
 using ConnectHub.MessageService.Interfaces;
 using ConnectHub.MessageService.Hubs;
+using ConnectHub.MessageService.Repositories;
 using MessageServiceImpl = ConnectHub.MessageService.Services.MessageService;
 
 namespace ConnectHub.MessageService
@@ -55,6 +56,7 @@ namespace ConnectHub.MessageService
                     };
                 });
 
+            builder.Services.AddScoped<IMessageRepository, MessageRepository>();
             builder.Services.AddScoped<IMessageService, MessageServiceImpl>();
             builder.Services.AddSignalR();
             builder.Services.AddControllers();
@@ -94,7 +96,6 @@ namespace ConnectHub.MessageService
 
             app.UseSwagger();
             app.UseSwaggerUI();
-            app.UseCors("AllowAll");
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

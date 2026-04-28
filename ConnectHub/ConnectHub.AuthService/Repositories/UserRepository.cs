@@ -100,11 +100,23 @@ namespace ConnectHub.AuthService.Repositories
             if (string.IsNullOrWhiteSpace(searchTerm))
                 return await _context.Users.Where(u => u.IsActive).OrderBy(u => u.DisplayName).Take(limit).ToListAsync();
 
+            var lowerTerm = searchTerm.ToLower();
             return await _context.Users
-                .Where(u => u.IsActive && (u.Username.Contains(searchTerm) || u.DisplayName.Contains(searchTerm) || u.Email.Contains(searchTerm)))
+                .Where(u => u.IsActive && (
+                    u.Username.ToLower().Contains(lowerTerm) || 
+                    u.DisplayName.ToLower().Contains(lowerTerm) || 
+                    u.Email.ToLower().Contains(lowerTerm)))
                 .OrderBy(u => u.DisplayName)
                 .Take(limit)
                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Get all users (Admin only)
+        /// </summary>
+        public async Task<List<User>> GetAllUsersAsync()
+        {
+            return await _context.Users.OrderBy(u => u.DisplayName).ToListAsync();
         }
 
         /// <summary>

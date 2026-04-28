@@ -39,20 +39,16 @@ namespace ConnectHub.MessageService.Data
             base.OnModelCreating(modelBuilder);
 
             /// 🔍 INDEX on SenderId - Speeds up "messages sent by user"
-            /// Without index, finding all messages from John would scan EVERY row
-            /// With index, it's like a book index - instant lookup!
             modelBuilder.Entity<Message>()
                 .HasIndex(m => m.SenderId);
 
-            /// 🔍 INDEX on ReceiverId - Speeds up "messages received by user"
-            modelBuilder.Entity<Message>()
-                .HasIndex(m => m.ReceiverId);
-
-            /// 🔍 COMPOSITE INDEX - Speeds up conversation queries
-            /// This helps queries that filter by BOTH SenderId AND ReceiverId
-            /// Example: WHERE SenderId = X AND ReceiverId = Y
+            /// 🔍 COMPOSITE INDEX - Speeds up conversation queries (Direct Messages)
             modelBuilder.Entity<Message>()
                 .HasIndex(m => new { m.SenderId, m.ReceiverId });
+
+            /// 🔍 COMPOSITE INDEX - Speeds up room queries (Room Messages)
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.RoomId, m.SentAt });
         }
     }
 }

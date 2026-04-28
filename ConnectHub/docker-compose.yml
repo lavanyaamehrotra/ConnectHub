@@ -8,8 +8,8 @@ services:
     image: postgres:17
     container_name: connecthub-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ConnectHubAuthDb
     ports:
       - "5433:5432"
@@ -61,8 +61,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -119,6 +119,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubAuthDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,6 +144,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5003
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubMessageDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -163,6 +169,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5004
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubChatRoomDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,6 +194,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5006
+      - JWT__Secret=${JWT_SECRET}
     depends_on:
       redis:
         condition: service_healthy
@@ -213,6 +222,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5007
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubNotificationDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - Email__SmtpUser=${SMTP_USER}
+      - Email__SmtpPass=${SMTP_PASS}
+      - Email__From=${SMTP_USER}
     depends_on:
       postgres:
         condition: service_healthy
@@ -240,6 +256,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5008
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubMediaDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -261,7 +279,7 @@ services:
       dockerfile: Dockerfile
     container_name: connecthub-gateway
     ports:
-      - "80:5009"
+      - "8080:5009"
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5009

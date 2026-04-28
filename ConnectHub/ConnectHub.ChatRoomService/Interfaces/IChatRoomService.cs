@@ -5,26 +5,27 @@ namespace ConnectHub.ChatRoomService.Interfaces
     public interface IChatRoomService
     {
         // Room management
-        Task<ChatRoomResponse> CreateRoomAsync(Guid userId, CreateRoomRequest request);
-        Task<ChatRoomResponse> UpdateRoomAsync(Guid userId, Guid roomId, UpdateRoomRequest request);
-        Task<bool> DeleteRoomAsync(Guid userId, Guid roomId);
-        Task<List<ChatRoomResponse>> GetUserRoomsAsync(Guid userId);
-        Task<ChatRoomResponse> GetRoomAsync(Guid roomId);
-        Task<List<ChatRoomResponse>> GetPublicRoomsAsync();  // NEW
-        Task<bool> IsUserInRoomAsync(Guid userId, Guid roomId);  // NEW
-        Task<int> GetMemberCountAsync(Guid roomId);  // NEW
+        Task<ChatRoomResponse> CreateRoom(Guid userId, string username, CreateRoomRequest request);
+        Task<ChatRoomResponse> UpdateRoom(Guid userId, Guid roomId, UpdateRoomRequest request);
+        Task<bool> DeleteRoom(Guid userId, Guid roomId);
+        Task<List<ChatRoomResponse>> GetRoomsByUser(Guid userId);
+        Task<ChatRoomResponse> GetRoomById(Guid roomId);
+        Task<List<ChatRoomResponse>> GetPublicRooms();
+        Task<bool> IsUserInRoom(Guid userId, Guid roomId);
+        Task<int> GetMemberCount(Guid roomId);
 
         // Member management
-        Task<bool> JoinRoomAsync(Guid userId, Guid roomId);
-        Task<bool> LeaveRoomAsync(Guid userId, Guid roomId);
-        Task<List<MemberResponse>> GetRoomMembersAsync(Guid roomId);
-        Task<bool> AddMemberAsync(Guid adminUserId, Guid roomId, AddMemberRequest request);
-        Task<bool> RemoveMemberAsync(Guid adminUserId, Guid roomId, Guid memberUserId);
-        Task<bool> MakeAdminAsync(Guid adminUserId, Guid roomId, MakeAdminRequest request);
-        Task<bool> UpdateMemberRoleAsync(Guid adminUserId, Guid roomId, UpdateMemberRoleRequest request);  // NEW
+        Task<bool> JoinRoom(Guid userId, string username, Guid roomId);
+        Task<bool> LeaveRoom(Guid userId, Guid roomId);
+        Task<List<MemberResponse>> GetMembers(Guid roomId);
+        Task<bool> AddMember(Guid adminUserId, Guid roomId, AddMemberRequest request);
+        Task<bool> RemoveMember(Guid adminUserId, Guid roomId, Guid memberUserId);
+        Task<bool> UpdateMemberRole(Guid adminUserId, Guid roomId, UpdateMemberRoleRequest request);
 
-        // Messaging
-        Task<RoomMessageResponse> SendMessageAsync(Guid userId, Guid roomId, SendRoomMessageRequest request);
-        Task<List<RoomMessageResponse>> GetRoomMessagesAsync(Guid roomId, int page = 1, int pageSize = 50);
+        // Messaging (Internal use or helper)
+        Task<RoomMessageResponse> SendMessage(Guid userId, Guid roomId, SendRoomMessageRequest request);
+        Task<List<RoomMessageResponse>> GetRoomMessages(Guid roomId, int page = 1, int pageSize = 50);
+        Task<RoomMessageResponse> UpdateMessage(Guid userId, Guid messageId, string newContent);
+        Task<Guid?> DeleteMessage(Guid userId, Guid messageId);
     }
 }

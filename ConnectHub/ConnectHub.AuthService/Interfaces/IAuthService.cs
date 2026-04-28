@@ -23,6 +23,9 @@ namespace ConnectHub.AuthService.Interfaces
         
         /// <summary>Logout user (updates online status)</summary>
         Task<AuthResponse> LogoutAsync(Guid userId);
+
+        /// <summary>Explicitly set user online/offline status (sync from HubService)</summary>
+        Task<AuthResponse> SetUserOnlineStatusAsync(Guid userId, bool isOnline);
         
         // ==========  PROFILE MANAGEMENT ==========
         
@@ -35,12 +38,24 @@ namespace ConnectHub.AuthService.Interfaces
         /// <summary>Deactivate user account (soft delete)</summary>
         Task<AuthResponse> DeactivateAccountAsync(Guid userId);
         
+        /// <summary>Reactivate a previously deactivated account using credentials</summary>
+        Task<AuthResponse> ReactivateAccountAsync(string usernameOrEmail);
+        
+        /// <summary>Admin toggle active status</summary>
+        Task<AuthResponse> ToggleUserStatusAsync(Guid userId);
+        
         // ==========  USER QUERIES ==========
         
         /// <summary>Search for users by keyword</summary>
         Task<UserSearchResponse> SearchUsersAsync(string searchTerm);
         
+        /// <summary>Get all registered users</summary>
+        Task<List<UserDto>> GetAllUsersAsync();
+
         /// <summary>Get user details by ID</summary>
         Task<UserDto?> GetUserByIdAsync(Guid userId);
+
+        /// <summary>Get multiple users by their IDs</summary>
+        Task<List<UserDto>> GetUsersByIdsAsync(List<Guid> userIds);
     }
 }

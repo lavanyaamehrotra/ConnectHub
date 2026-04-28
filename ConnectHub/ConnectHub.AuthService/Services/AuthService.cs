@@ -126,8 +126,8 @@ namespace ConnectHub.AuthService.Services
             {
                 // Find user by username OR email
                 var user = await _userRepository.GetByUsernameOrEmailAsync(request.UsernameOrEmail);
-                
-                if (user == null || !user.IsActive)
+
+                if (user == null)
                 {
                     return new AuthResponse
                     {
@@ -136,14 +136,25 @@ namespace ConnectHub.AuthService.Services
                     };
                 }
 
-                // Verify password (compare plain text with stored hash)
-                if (string.IsNullOrEmpty(user.PasswordHash) || 
-                    !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash)) // ✅ FIXED
+                // Verify password before revealing account status
+                if (string.IsNullOrEmpty(user.PasswordHash) ||
+                    !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 {
                     return new AuthResponse
                     {
                         Success = false,
                         Message = "Invalid username/email or password"
+                    };
+                }
+
+                // Correct credentials but account is deactivated
+                if (!user.IsActive)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        IsDeactivated = true,
+                        Message = "Your account has been deactivated. Would you like to reactivate it?"
                     };
                 }
 
@@ -240,7 +251,9 @@ namespace ConnectHub.AuthService.Services
                     else
                     {
                         // Link Google ID to existing email account
+                        // Also auto-reactivate if account was deactivated
                         user.GoogleId = payload.Subject;
+                        user.IsActive = true; // auto-reactivate via Google identity
                         user.IsOnline = true;
                         user.LastSeen = DateTime.UtcNow;
                         await _userRepository.UpdateAsync(user);
@@ -249,7 +262,15 @@ namespace ConnectHub.AuthService.Services
                 }
                 else
                 {
-                    // Existing Google user - just update online status
+                    // If account was deactivated, auto-reactivate on Google login
+                    // Google OAuth itself proves the user's identity, so we trust it
+                    if (!user.IsActive)
+                    {
+                        user.IsActive = true;
+                        _logger.LogInformation("Google user account auto-reactivated: {Email}", user.Email);
+                    }
+
+                    // Update online status
                     user.IsOnline = true;
                     user.LastSeen = DateTime.UtcNow;
                     await _userRepository.UpdateAsync(user);
@@ -310,6 +331,26 @@ namespace ConnectHub.AuthService.Services
                     Success = false,
                     Message = "Logout failed"
                 };
+            }
+        }
+
+        public async Task<AuthResponse> SetUserOnlineStatusAsync(Guid userId, bool isOnline)
+        {
+            try
+            {
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null) return new AuthResponse { Success = false, Message = "User not found" };
+
+                user.IsOnline = isOnline;
+                user.LastSeen = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user);
+
+                return new AuthResponse { Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to set online status for user {UserId}", userId);
+                return new AuthResponse { Success = false, Message = "Update failed" };
             }
         }
 
@@ -465,6 +506,46 @@ namespace ConnectHub.AuthService.Services
         }
 
         /// <summary>
+        /// REACTIVATE ACCOUNT - Re-enable a deactivated account
+        /// User has already proven their identity via correct password in Login
+        /// We just flip IsActive back to true and log them in
+        /// </summary>
+        public async Task<AuthResponse> ReactivateAccountAsync(string usernameOrEmail)
+        {
+            try
+            {
+                var user = await _userRepository.GetByUsernameOrEmailAsync(usernameOrEmail);
+                if (user == null)
+                {
+                    return new AuthResponse { Success = false, Message = "User not found" };
+                }
+
+                // Reactivate and log in
+                user.IsActive = true;
+                user.IsOnline = true;
+                user.LastSeen = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user);
+
+                var token = _jwtHelper.GenerateToken(user);
+
+                _logger.LogInformation("User account reactivated: {Username}", user.Username);
+
+                return new AuthResponse
+                {
+                    Success = true,
+                    Message = "Account reactivated! Welcome back! 🎉",
+                    Token = token,
+                    User = MapToUserDto(user)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Account reactivation failed for {UsernameOrEmail}", usernameOrEmail);
+                return new AuthResponse { Success = false, Message = "Reactivation failed. Please try again." };
+            }
+        }
+
+        /// <summary>
         ///  SEARCH USERS - Find users by keyword
         /// Searches in username, display name, and email
         /// Only returns active users (IsActive = true)
@@ -501,6 +582,34 @@ namespace ConnectHub.AuthService.Services
             return user != null ? MapToUserDto(user) : null;
         }
 
+        public async Task<List<UserDto>> GetAllUsersAsync()
+        {
+            var users = await _userRepository.GetAllUsersAsync();
+            return users.Select(MapToUserDto).ToList();
+        }
+
+        public async Task<AuthResponse> ToggleUserStatusAsync(Guid userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return new AuthResponse { Success = false, Message = "User not found" };
+
+            user.IsActive = !user.IsActive;
+            await _userRepository.UpdateAsync(user);
+
+            return new AuthResponse { Success = true, Message = $"User {(user.IsActive ? "activated" : "deactivated")}" };
+        }
+
+        public async Task<List<UserDto>> GetUsersByIdsAsync(List<Guid> userIds)
+        {
+            var result = new List<UserDto>();
+            foreach (var id in userIds)
+            {
+                var user = await _userRepository.GetByIdAsync(id);
+                if (user != null) result.Add(MapToUserDto(user));
+            }
+            return result;
+        }
+
         /// <summary>
         /// MAPPER - Convert User entity to UserDto (safe for API)
         /// Removes sensitive data like PasswordHash and GoogleId
@@ -516,8 +625,10 @@ namespace ConnectHub.AuthService.Services
                 Bio = user.Bio,
                 AvatarUrl = user.AvatarUrl,
                 IsOnline = user.IsOnline,
+                IsActive = user.IsActive,
                 LastSeen = user.LastSeen,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                Role = user.Role
             };
         }
     }

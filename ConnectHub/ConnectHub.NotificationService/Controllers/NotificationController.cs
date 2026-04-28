@@ -27,8 +27,10 @@ namespace ConnectHub.NotificationService.Controllers
             _notificationService = notificationService;
         }
 
+        // GET /api/notifications
         // GET /api/notifications/byRecipient?page=1&pageSize=20
         // Returns paginated notifications for the logged-in user
+        [HttpGet]
         [HttpGet("byRecipient")]
         public async Task<IActionResult> GetByRecipient([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
@@ -91,6 +93,7 @@ namespace ConnectHub.NotificationService.Controllers
         }
 
         // POST /api/notifications/sendBulk  (admin broadcast)
+        [Authorize(Roles = "Admin")]
         [HttpPost("sendBulk")]
         public async Task<IActionResult> SendBulk([FromBody] BulkNotificationDto dto)
         {
@@ -99,6 +102,7 @@ namespace ConnectHub.NotificationService.Controllers
         }
 
         // POST /api/notifications/send  (called by other microservices internally)
+        [AllowAnonymous]
         [HttpPost("send")]
         public async Task<IActionResult> Send([FromBody] CreateNotificationDto dto)
         {

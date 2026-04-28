@@ -7,7 +7,7 @@ using ConnectHub.MessageService.Interfaces;
 namespace ConnectHub.MessageService.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/messages")]
     [Authorize]
     public class MessagesController : ControllerBase
     {
@@ -21,25 +21,55 @@ namespace ConnectHub.MessageService.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
         {
-            var userId = GetUserId();
-            var result = await _messageService.SendMessageAsync(userId, request);
-            return Ok(result);
+            try
+            {
+                var userId = GetUserId();
+                var result = await _messageService.SendMessageAsync(userId, request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPost("send-media")]
         public async Task<IActionResult> SendMediaMessage([FromBody] SendMediaMessageRequest request)
         {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _messageService.SendMediaMessageAsync(userId, request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("direct/{otherUserId}")]
+        public async Task<IActionResult> GetDirectMessages(Guid otherUserId)
+        {
             var userId = GetUserId();
-            var result = await _messageService.SendMediaMessageAsync(userId, request);
+            var result = await _messageService.GetDirectMessagesAsync(userId, otherUserId);
             return Ok(result);
         }
 
-        [HttpGet("conversation/{otherUserId}")]
-        public async Task<IActionResult> GetConversation(Guid otherUserId)
+        [HttpGet("room/{roomId}")]
+        public async Task<IActionResult> GetRoomMessages(Guid roomId)
         {
             var userId = GetUserId();
-            var result = await _messageService.GetConversationAsync(userId, otherUserId);
+            var result = await _messageService.GetRoomMessagesAsync(userId, roomId);
             return Ok(result);
+        }
+
+        [HttpGet("unread")]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var userId = GetUserId();
+            var result = await _messageService.GetUnreadCountAsync(userId);
+            return Ok(new { UnreadCount = result });
         }
 
         [HttpGet("recent")]
@@ -50,29 +80,21 @@ namespace ConnectHub.MessageService.Controllers
             return Ok(result);
         }
 
-        [HttpGet("unread-count")]
-        public async Task<IActionResult> GetUnreadCount()
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchMessages([FromQuery] string q)
         {
             var userId = GetUserId();
-            var result = await _messageService.GetUnreadCountAsync(userId);
-            return Ok(new { UnreadCount = result });
+            var result = await _messageService.SearchMessagesAsync(userId, q ?? "");
+            return Ok(result);
         }
 
-        [HttpPut("mark-all-read/{otherUserId}")]
-        public async Task<IActionResult> MarkAllAsRead(Guid otherUserId)
-        {
-            var userId = GetUserId();
-            var result = await _messageService.MarkAllAsReadAsync(userId, otherUserId);
-            return Ok(new { MarkedCount = result });
-        }
-
-        [HttpGet("{messageId}")]
-        public async Task<IActionResult> GetMessageById(Guid messageId)
+        [HttpPut("markRead/{messageId}")]
+        public async Task<IActionResult> MarkAsRead(Guid messageId)
         {
             try
             {
                 var userId = GetUserId();
-                var result = await _messageService.GetMessageByIdAsync(userId, messageId);
+                var result = await _messageService.MarkAsReadAsync(userId, messageId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -102,8 +124,10 @@ namespace ConnectHub.MessageService.Controllers
             try
             {
                 var userId = GetUserId();
-                await _messageService.DeleteMessageAsync(userId, messageId);
-                return Ok(new { Success = true });
+                var success = await _messageService.DeleteMessageAsync(userId, messageId);
+                if (success)
+                    return Ok(new { Success = true });
+                return NotFound(new { Message = "Message not found or already deleted." });
             }
             catch (Exception ex)
             {
@@ -111,13 +135,32 @@ namespace ConnectHub.MessageService.Controllers
             }
         }
 
-        [HttpPut("read/{messageId}")]
-        public async Task<IActionResult> MarkAsRead(Guid messageId)
+        // Global mark all as read (across all conversations)
+        [HttpPut("mark-all-read")]
+        public async Task<IActionResult> MarkAllGlobalAsRead()
+        {
+            var userId = GetUserId();
+            var result = await _messageService.MarkAllGlobalAsReadAsync(userId);
+            return Ok(new { MarkedCount = result });
+        }
+
+        // Maintaining this for backward compatibility if the frontend still calls mark-all-read/{otherUserId}
+        [HttpPut("mark-all-read/{otherUserId}")]
+        public async Task<IActionResult> MarkAllAsRead(Guid otherUserId)
+        {
+            var userId = GetUserId();
+            var result = await _messageService.MarkAllAsReadAsync(userId, otherUserId);
+            return Ok(new { MarkedCount = result });
+        }
+
+        // Endpoint to get a specific message by Id
+        [HttpGet("{messageId}")]
+        public async Task<IActionResult> GetMessageById(Guid messageId)
         {
             try
             {
                 var userId = GetUserId();
-                var result = await _messageService.MarkAsReadAsync(userId, messageId);
+                var result = await _messageService.GetMessageByIdAsync(userId, messageId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -126,18 +169,10 @@ namespace ConnectHub.MessageService.Controllers
             }
         }
 
-        [HttpGet("search")]
-        public async Task<IActionResult> SearchMessages([FromQuery] string q)
-        {
-            var userId = GetUserId();
-            var result = await _messageService.SearchMessagesAsync(userId, q ?? "");
-            return Ok(result);
-        }
-
         private Guid GetUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return Guid.Parse(userIdClaim ?? Guid.Empty.ToString());
+            return Guid.TryParse(userIdClaim, out var id) ? id : Guid.Empty;
         }
     }
 }

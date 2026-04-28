@@ -93,6 +93,7 @@ namespace ConnectHub.AuthService.DTOs
     public class AuthResponse
     {
         public bool Success { get; set; }          // Did it work? (true/false)
+        public bool IsDeactivated { get; set; }    // Is the account deactivated?
         public string Message { get; set; } = string.Empty;  // "Welcome back!"
         public string Token { get; set; } = string.Empty;    // JWT for future requests
         public UserDto? User { get; set; }         // User info (no password!)
@@ -112,8 +113,10 @@ namespace ConnectHub.AuthService.DTOs
         public string? Bio { get; set; }
         public string? AvatarUrl { get; set; }
         public bool IsOnline { get; set; }
+        public bool IsActive { get; set; }
         public DateTime LastSeen { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string Role { get; set; } = "User";
     }
 
     /// <summary>

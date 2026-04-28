@@ -76,14 +76,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontends", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:4200",   // Angular
-                "http://localhost:3000",   // React
-                "http://localhost:5173"    // Vite/Vue
-            )
+            .SetIsOriginAllowed(origin => true)
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials();           // Required for SignalR
+            .AllowCredentials();
     });
 });
 

@@ -56,7 +56,9 @@ namespace ConnectHub.MediaService.Services
 
             // Upload to Azure Blob Storage
             var container = _blobClient.GetBlobContainerClient(ContainerName);
-            await container.CreateIfNotExistsAsync(PublicAccessType.None);
+            await container.CreateIfNotExistsAsync(PublicAccessType.Blob);
+            // Ensure public access is set even if container already existed
+            await container.SetAccessPolicyAsync(PublicAccessType.Blob);
 
             var blobName   = $"{uploadedBy}/{Guid.NewGuid()}/{file.FileName}";
             var blobClient = container.GetBlobClient(blobName);

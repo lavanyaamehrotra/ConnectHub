@@ -108,17 +108,14 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
-});
 
-// ========== 8. CORS ==========
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
+    // INCLUDE XML COMMENTS - This makes your controller comments show up in Swagger UI
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
     {
-        policy.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 
 // ========== BUILD THE APP ==========
@@ -129,7 +126,6 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

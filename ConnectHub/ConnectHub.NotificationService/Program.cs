@@ -108,20 +108,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ========== 7. CORS ==========
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontends", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:4200",
-                "http://localhost:3000",
-                "http://localhost:5173")
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
-
 // ========== BUILD ==========
 var app = builder.Build();
 
@@ -134,7 +120,6 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -173,8 +173,19 @@ namespace ConnectHub.NotificationService.Messaging
                 // 1. Push real-time badge to HubService → SignalR → browser
                 await PushBadgeAsync(evt.RecipientId, evt.UnreadCount);
 
-                // 2. Send email via MailKit (only if SMTP is configured)
-                await TrySendEmailAsync(evt.RecipientId, evt.Title, evt.Message);
+                // 2. Fetch sender info for better email context
+                string senderName = "Someone";
+                if (evt.SenderId.HasValue)
+                {
+                    var senderInfo = await GetUserInfoAsync(evt.SenderId.Value);
+                    senderName = senderInfo?.DisplayName ?? senderInfo?.Username ?? "Someone";
+                }
+
+                // 3. Send email via MailKit (only if SMTP is configured)
+                var emailSubject = $"{senderName} messaged you on ConnectHub";
+                var emailBody = $"Hi! {senderName} sent you a message: \"{evt.Message}\"\n\nLog in to ConnectHub to reply.";
+                
+                await TrySendEmailAsync(evt.RecipientId, emailSubject, emailBody);
 
                 _channel!.BasicAck(ea.DeliveryTag, multiple: false);
             }
@@ -251,6 +262,24 @@ namespace ConnectHub.NotificationService.Messaging
             }
         }
 
+        private async Task<UserResponse?> GetUserInfoAsync(Guid userId)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var factory     = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+                var client      = factory.CreateClient("AuthService");
+                return await client.GetFromJsonAsync<UserResponse>($"/api/user/{userId}");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private class UserResponse { public string Username { get; set; } = ""; public string DisplayName { get; set; } = ""; }
+        private class UserEmailResponse { public string Email { get; set; } = ""; }
+
         private async Task<string?> GetUserEmailAsync(Guid userId)
         {
             try
@@ -281,7 +310,5 @@ namespace ConnectHub.NotificationService.Messaging
             try { _channel?.Close(); }    catch { /* ignore */ }
             try { _connection?.Close(); } catch { /* ignore */ }
         }
-
-        private class UserEmailResponse { public string Email { get; set; } = ""; }
     }
 }

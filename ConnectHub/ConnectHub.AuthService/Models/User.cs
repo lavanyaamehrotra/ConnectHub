@@ -113,5 +113,14 @@ namespace ConnectHub.AuthService.Models
         /// </summary>
         [MaxLength(255)]
         public string? GoogleId { get; set; }
+
+        /// <summary>
+        /// ROLE - User permissions
+        /// "User" = Regular chat user
+        /// "Admin" = Access to dashboard and bulk tools
+        /// </summary>
+        [Required]
+        [MaxLength(20)]
+        public string Role { get; set; } = "User";
     }
 }
