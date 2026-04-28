@@ -43,6 +43,9 @@ namespace ConnectHub.AuthService.Interfaces
         
         /// <summary>Search users by name, username, or email</summary>
         Task<List<User>> SearchUsersAsync(string searchTerm, int limit = 20);
+
+        /// <summary>Get all users (Admin only)</summary>
+        Task<List<User>> GetAllUsersAsync();
         
         // ==========  VALIDATION OPERATIONS (Check if exists) ==========
         

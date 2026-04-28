@@ -16,9 +16,11 @@ namespace ConnectHub.ChatRoomService.Models
         [Required]
         public Guid SenderId { get; set; }
 
-        [Required]
         [MaxLength(2000)]
-        public string Content { get; set; } = string.Empty;
+        public string? Content { get; set; } = string.Empty;
+
+        public string? MediaUrl { get; set; }
+        public string? MessageType { get; set; } = "TEXT";
 
         public bool IsDeleted { get; set; } = false;
 

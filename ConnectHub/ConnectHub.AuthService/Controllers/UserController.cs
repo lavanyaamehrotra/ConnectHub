@@ -109,8 +109,9 @@ namespace ConnectHub.AuthService.Controllers
         /// <summary>
         /// GET USER BY ID - Get any user's public information
         /// GET /api/user/{id}
-        /// Requires authentication
+        /// AllowAnonymous - internal services need to fetch sender names for notifications
         /// </summary>
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {
@@ -121,11 +122,22 @@ namespace ConnectHub.AuthService.Controllers
 
             return Ok(user);
         }
+
         /// <summary>
-        /// GET USER EMAIL - Called internally by NotificationService
-        /// GET /api/user/{id}/email
-        /// AllowAnonymous - internal service-to-service call, no JWT needed
+        /// GET USERS BY IDS — Bulk user lookup for recent chats enrichment
+        /// POST /api/user/by-ids
+        /// AllowAnonymous - internal service lookup
         /// </summary>
+        [AllowAnonymous]
+        [HttpPost("by-ids")]
+        public async Task<IActionResult> GetUsersByIds([FromBody] List<Guid> userIds)
+        {
+            if (userIds == null || userIds.Count == 0)
+                return Ok(new List<object>());
+
+            var result = await _authService.GetUsersByIdsAsync(userIds);
+            return Ok(result);
+        }
         [AllowAnonymous]
         [HttpGet("{id}/email")]
         public async Task<IActionResult> GetUserEmail(Guid id)
@@ -136,6 +148,44 @@ namespace ConnectHub.AuthService.Controllers
                 return NotFound();
 
             return Ok(new { Email = user.Email });
+        }
+
+        /// <summary>
+        /// GET ALL USERS — For Admin Dashboard
+        /// GET /api/user/all
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _authService.GetAllUsersAsync();
+            return Ok(users);
+        }
+
+        /// <summary>
+        /// DEACTIVATE/ACTIVATE ACCOUNT — Admin action
+        /// POST /api/user/{id}/toggle-active
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/toggle-active")]
+        public async Task<IActionResult> ToggleActive(Guid id)
+        {
+            var result = await _authService.ToggleUserStatusAsync(id);
+            if (!result.Success) return NotFound(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// UPDATE PRESENCE — For HubService sync
+        /// POST /api/user/{id}/presence?isOnline=true
+        /// </summary>
+        [Authorize]
+        [HttpPost("{id}/presence")]
+        public async Task<IActionResult> UpdatePresence(Guid id, [FromQuery] bool isOnline)
+        {
+            var result = await _authService.SetUserOnlineStatusAsync(id, isOnline);
+            return Ok(result);
         }
 
         /// <summary>

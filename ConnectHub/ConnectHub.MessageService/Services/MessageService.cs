@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using ConnectHub.MessageService.Data;
 using ConnectHub.MessageService.Models;
 using ConnectHub.MessageService.DTOs;
 using ConnectHub.MessageService.Interfaces;
@@ -8,12 +6,12 @@ namespace ConnectHub.MessageService.Services
 {
     public class MessageService : IMessageService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IMessageRepository _repository;
         private readonly ILogger<MessageService> _logger;
 
-        public MessageService(ApplicationDbContext context, ILogger<MessageService> logger)
+        public MessageService(IMessageRepository repository, ILogger<MessageService> logger)
         {
-            _context = context;
+            _repository = repository;
             _logger = logger;
         }
 
@@ -33,9 +31,7 @@ namespace ConnectHub.MessageService.Services
                 ReadAt = null
             };
 
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync();
-
+            await _repository.AddMessageAsync(message);
             return MapToResponse(message);
         }
 
@@ -56,32 +52,140 @@ namespace ConnectHub.MessageService.Services
                 SentAt = DateTime.UtcNow
             };
 
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync();
+            await _repository.AddMessageAsync(message);
+            return MapToResponse(message);
+        }
+
+        public async Task<MessageResponse> GetMessageByIdAsync(Guid userId, Guid messageId)
+        {
+            var message = await _repository.FindByMessageIdAsync(messageId);
+
+            if (message == null)
+                throw new Exception("Message not found");
+
+            if (message.SenderId != userId && message.ReceiverId != userId)
+                throw new Exception("You don't have access to this message");
 
             return MapToResponse(message);
         }
 
-        public async Task<ConversationResponse> GetConversationAsync(Guid userId, Guid otherUserId)
+        public async Task<ConversationResponse> GetDirectMessagesAsync(Guid userId, Guid otherUserId)
         {
-            var messages = await _context.Messages
-                .Where(m => !m.IsDeleted)
-                .Where(m => (m.SenderId == userId && m.ReceiverId == otherUserId) ||
-                           (m.SenderId == otherUserId && m.ReceiverId == userId))
-                .OrderBy(m => m.SentAt)
-                .Select(m => MapToResponse(m))
-                .ToListAsync();
+            var messages = await _repository.FindBySenderAndReceiverAsync(userId, otherUserId);
 
             return new ConversationResponse
             {
                 OtherUserId = otherUserId,
-                Messages = messages
+                Messages = messages.Select(MapToResponse).ToList()
             };
+        }
+
+        public async Task<ConversationResponse> GetRoomMessagesAsync(Guid userId, Guid roomId)
+        {
+            var messages = await _repository.FindByRoomIdAsync(roomId);
+
+            return new ConversationResponse
+            {
+                OtherUserId = roomId, // Using this field for Room ID generically
+                Messages = messages.Select(MapToResponse).ToList()
+            };
+        }
+
+        public async Task<int> GetUnreadCountAsync(Guid userId)
+        {
+            return await _repository.CountUnreadByReceiverIdAsync(userId);
+        }
+
+        public async Task<List<RecentChatResponse>> GetRecentChatsAsync(Guid userId)
+        {
+            var recentMessages = await _repository.FindRecentMessagesAsync(userId);
+            var recentChats = new List<RecentChatResponse>();
+
+            foreach (var message in recentMessages)
+            {
+                var otherUserId = message.SenderId == userId ? message.ReceiverId!.Value : message.SenderId;
+                var unreadMessages = await _repository.FindUnreadByReceiverIdAsync(userId, otherUserId);
+
+                recentChats.Add(new RecentChatResponse
+                {
+                    UserId = otherUserId,
+                    Username = "", // Will be filled by frontend via Auth Service
+                    DisplayName = "", // Will be filled by frontend
+                    LastMessage = MapToResponse(message),
+                    UnreadCount = unreadMessages.Count,
+                    IsOnline = false // Will be set by Presence Service
+                });
+            }
+
+            return recentChats.OrderByDescending(c => c.LastMessage?.SentAt).ToList();
+        }
+
+        public async Task<SearchMessagesResponse> SearchMessagesAsync(Guid userId, string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+                return new SearchMessagesResponse();
+
+            var messages = await _repository.SearchMessagesAsync(userId, searchTerm);
+
+            return new SearchMessagesResponse
+            {
+                Messages = messages.Select(MapToResponse).ToList(),
+                TotalCount = messages.Count
+            };
+        }
+
+        public async Task<MessageResponse> MarkAsReadAsync(Guid userId, Guid messageId)
+        {
+            var message = await _repository.FindByMessageIdAsync(messageId);
+            
+            if (message == null)
+                throw new Exception("Message not found");
+
+            if (message.ReceiverId != userId)
+                throw new Exception("Only the receiver can mark message as read");
+
+            if (message.IsRead)
+                return MapToResponse(message);
+
+            message.IsRead = true;
+            message.ReadAt = DateTime.UtcNow;
+            
+            await _repository.UpdateMessageAsync(message);
+
+            return MapToResponse(message);
+        }
+
+        public async Task<int> MarkAllAsReadAsync(Guid userId, Guid otherUserId)
+        {
+            var unreadMessages = await _repository.FindUnreadByReceiverIdAsync(userId, otherUserId);
+
+            foreach (var message in unreadMessages)
+            {
+                message.IsRead = true;
+                message.ReadAt = DateTime.UtcNow;
+                await _repository.UpdateMessageAsync(message);
+            }
+
+            return unreadMessages.Count;
+        }
+
+        public async Task<int> MarkAllGlobalAsReadAsync(Guid userId)
+        {
+            var unreadMessages = await _repository.FindAllUnreadByReceiverIdAsync(userId);
+
+            foreach (var message in unreadMessages)
+            {
+                message.IsRead = true;
+                message.ReadAt = DateTime.UtcNow;
+                await _repository.UpdateMessageAsync(message);
+            }
+
+            return unreadMessages.Count;
         }
 
         public async Task<MessageResponse> EditMessageAsync(Guid userId, Guid messageId, EditMessageRequest request)
         {
-            var message = await _context.Messages.FindAsync(messageId);
+            var message = await _repository.FindByMessageIdAsync(messageId);
             
             if (message == null)
                 throw new Exception("Message not found");
@@ -96,14 +200,14 @@ namespace ConnectHub.MessageService.Services
             message.IsEdited = true;
             message.EditedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _repository.UpdateMessageAsync(message);
 
             return MapToResponse(message);
         }
 
         public async Task<bool> DeleteMessageAsync(Guid userId, Guid messageId)
         {
-            var message = await _context.Messages.FindAsync(messageId);
+            var message = await _repository.FindByMessageIdAsync(messageId);
             
             if (message == null)
                 throw new Exception("Message not found");
@@ -114,127 +218,7 @@ namespace ConnectHub.MessageService.Services
             if (message.IsDeleted)
                 throw new Exception("Message already deleted");
 
-            message.IsDeleted = true;
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
-
-        public async Task<MessageResponse> MarkAsReadAsync(Guid userId, Guid messageId)
-        {
-            var message = await _context.Messages.FindAsync(messageId);
-            
-            if (message == null)
-                throw new Exception("Message not found");
-
-            if (message.ReceiverId != userId)
-                throw new Exception("Only the receiver can mark message as read");
-
-            if (message.IsRead)
-                return MapToResponse(message);
-
-            message.IsRead = true;
-            message.ReadAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return MapToResponse(message);
-        }
-
-        public async Task<int> MarkAllAsReadAsync(Guid userId, Guid otherUserId)
-        {
-            var unreadMessages = await _context.Messages
-                .Where(m => m.SenderId == otherUserId && m.ReceiverId == userId && !m.IsRead && !m.IsDeleted)
-                .ToListAsync();
-
-            foreach (var message in unreadMessages)
-            {
-                message.IsRead = true;
-                message.ReadAt = DateTime.UtcNow;
-            }
-
-            await _context.SaveChangesAsync();
-            return unreadMessages.Count;
-        }
-
-        public async Task<SearchMessagesResponse> SearchMessagesAsync(Guid userId, string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-                return new SearchMessagesResponse();
-
-            var messages = await _context.Messages
-                .Where(m => !m.IsDeleted)
-                .Where(m => m.SenderId == userId || m.ReceiverId == userId)
-                .Where(m => m.Content.Contains(searchTerm))
-                .OrderByDescending(m => m.SentAt)
-                .Select(m => MapToResponse(m))
-                .ToListAsync();
-
-            return new SearchMessagesResponse
-            {
-                Messages = messages,
-                TotalCount = messages.Count
-            };
-        }
-
-        public async Task<int> GetUnreadCountAsync(Guid userId)
-        {
-            return await _context.Messages
-                .CountAsync(m => m.ReceiverId == userId && !m.IsRead && !m.IsDeleted);
-        }
-
-        public async Task<List<RecentChatResponse>> GetRecentChatsAsync(Guid userId)
-        {
-            // Get all unique users that the current user has chatted with
-            var chatUsers = await _context.Messages
-                .Where(m => (m.SenderId == userId || m.ReceiverId == userId) && !m.IsDeleted)
-                .Select(m => m.SenderId == userId ? m.ReceiverId : m.SenderId)
-                .Distinct()
-                .ToListAsync();
-
-            var recentChats = new List<RecentChatResponse>();
-
-            foreach (var otherUserId in chatUsers)
-            {
-                // Get last message
-                var lastMessage = await _context.Messages
-                    .Where(m => ((m.SenderId == userId && m.ReceiverId == otherUserId) ||
-                                (m.SenderId == otherUserId && m.ReceiverId == userId)) && !m.IsDeleted)
-                    .OrderByDescending(m => m.SentAt)
-                    .FirstOrDefaultAsync();
-
-                // Get unread count
-                var unreadCount = await _context.Messages
-                    .CountAsync(m => m.SenderId == otherUserId && m.ReceiverId == userId && !m.IsRead && !m.IsDeleted);
-
-                if (lastMessage != null)
-                {
-                    recentChats.Add(new RecentChatResponse
-                    {
-                        UserId = otherUserId,
-                        Username = "", // Will be filled by frontend via Auth Service
-                        DisplayName = "", // Will be filled by frontend
-                        LastMessage = MapToResponse(lastMessage),
-                        UnreadCount = unreadCount,
-                        IsOnline = false // Will be set by Presence Service
-                    });
-                }
-            }
-
-            return recentChats.OrderByDescending(c => c.LastMessage?.SentAt).ToList();
-        }
-
-        public async Task<MessageResponse> GetMessageByIdAsync(Guid userId, Guid messageId)
-        {
-            var message = await _context.Messages
-                .FirstOrDefaultAsync(m => m.MessageId == messageId && !m.IsDeleted);
-
-            if (message == null)
-                throw new Exception("Message not found");
-
-            if (message.SenderId != userId && message.ReceiverId != userId)
-                throw new Exception("You don't have access to this message");
-
-            return MapToResponse(message);
+            return await _repository.DeleteByMessageIdAsync(messageId);
         }
 
         private static MessageResponse MapToResponse(Message message)
@@ -243,7 +227,7 @@ namespace ConnectHub.MessageService.Services
             {
                 MessageId = message.MessageId,
                 SenderId = message.SenderId,
-                ReceiverId = message.ReceiverId,
+                ReceiverId = message.ReceiverId ?? Guid.Empty, // Return Empty if Room Message for DTO compatibility
                 Content = message.Content,
                 MessageType = message.MessageType,
                 MediaUrl = message.MediaUrl,

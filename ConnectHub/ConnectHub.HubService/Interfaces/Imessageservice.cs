@@ -1,3 +1,5 @@
+using ConnectHub.HubService.Models;
+
 namespace ConnectHub.HubService.Interfaces
 {
     // ============================================================
@@ -15,10 +17,16 @@ namespace ConnectHub.HubService.Interfaces
         /// Returns the saved message payload (with MessageId, SentAt, etc.)
         /// </summary>
         Task<object> SendMessageAsync(Guid senderId, Guid receiverId, string content, string? token = null);
+        Task<object> SendMediaMessageAsync(Guid senderId, Guid receiverId, string content, string mediaUrl, string messageType, string? token = null);
 
         /// <summary>
         /// Mark a message as read (updates IsRead=true, ReadAt=now).
         /// </summary>
         Task MarkAsReadAsync(Guid messageId, string? token = null);
+        Task MarkAllAsReadAsync(Guid userId, Guid otherUserId, string? token = null);
+        
+        Task<MessageHubResponse?> EditMessageAsync(Guid userId, Guid messageId, string newContent, string? token = null);
+        Task<bool> DeleteMessageAsync(Guid userId, Guid messageId, string? token = null);
+        Task<MessageHubResponse?> GetMessageByIdAsync(Guid userId, Guid messageId, string? token = null);
     }
 }

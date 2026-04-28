@@ -57,10 +57,13 @@ namespace ConnectHub.MessageService.Migrations
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("ReceiverId")
+                    b.Property<Guid?>("ReceiverId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("ReplyToMessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RoomId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("SenderId")
@@ -71,11 +74,11 @@ namespace ConnectHub.MessageService.Migrations
 
                     b.HasKey("MessageId");
 
-                    b.HasIndex("ReceiverId");
-
                     b.HasIndex("ReplyToMessageId");
 
                     b.HasIndex("SenderId");
+
+                    b.HasIndex("RoomId", "SentAt");
 
                     b.HasIndex("SenderId", "ReceiverId");
 

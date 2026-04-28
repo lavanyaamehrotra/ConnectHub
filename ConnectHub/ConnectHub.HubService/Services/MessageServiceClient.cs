@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ConnectHub.HubService.Interfaces;
+using ConnectHub.HubService.Models;
 
 namespace ConnectHub.HubService.Services
 {
@@ -11,12 +12,13 @@ namespace ConnectHub.HubService.Services
     // ============================================================
     public class MessageServiceClient : IMessageService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly HttpClient _httpClient;
         private readonly ILogger<MessageServiceClient> _logger;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        public MessageServiceClient(IHttpClientFactory httpClientFactory, ILogger<MessageServiceClient> logger)
+        public MessageServiceClient(HttpClient httpClient, ILogger<MessageServiceClient> logger)
         {
-            _httpClientFactory = httpClientFactory;
+            _httpClient = httpClient;
             _logger = logger;
         }
 
@@ -25,7 +27,7 @@ namespace ConnectHub.HubService.Services
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("MessageService");
+                var client = _httpClient;
                 ApplyToken(client, token);
 
                 var payload = JsonSerializer.Serialize(new { ReceiverId = receiverId, Content = content });
@@ -35,8 +37,7 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<object>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions)
                         ?? BuildFallback(senderId, receiverId, content);
                 }
 
@@ -47,8 +48,42 @@ namespace ConnectHub.HubService.Services
                 _logger.LogWarning("MessageService.SendMessage failed: {Msg}", ex.Message);
             }
 
-            // Fallback: broadcast proceeds even if persistence temporarily fails
             return BuildFallback(senderId, receiverId, content);
+        }
+
+        /// <inheritdoc />
+        public async Task<object> SendMediaMessageAsync(Guid senderId, Guid receiverId, string content, string mediaUrl, string messageType, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+
+                var payload = JsonSerializer.Serialize(new 
+                { 
+                    ReceiverId = receiverId, 
+                    Content = content,
+                    MediaUrl = mediaUrl,
+                    MessageType = messageType
+                });
+                var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("/api/messages/send-media", httpContent);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions)
+                        ?? BuildFallback(senderId, receiverId, content, mediaUrl, messageType);
+                }
+
+                _logger.LogWarning("MessageService returned {StatusCode} for SendMediaMessage", response.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("MessageService.SendMediaMessage failed: {Msg}", ex.Message);
+            }
+
+            return BuildFallback(senderId, receiverId, content, mediaUrl, messageType);
         }
 
         /// <inheritdoc />
@@ -56,15 +91,83 @@ namespace ConnectHub.HubService.Services
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("MessageService");
+                var client = _httpClient;
                 ApplyToken(client, token);
-
-                await client.PutAsync($"/api/messages/read/{messageId}", null);
+                var emptyContent = new StringContent("{}", Encoding.UTF8, "application/json");
+                await client.PutAsync($"/api/messages/markRead/{messageId}", emptyContent);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("MessageService.MarkAsRead failed: {Msg}", ex.Message);
             }
+        }
+
+        /// <inheritdoc />
+        public async Task MarkAllAsReadAsync(Guid userId, Guid otherUserId, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+                var emptyContent = new StringContent("{}", Encoding.UTF8, "application/json");
+                await client.PutAsync($"/api/messages/mark-all-read/{otherUserId}", emptyContent);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("MessageService.MarkAllAsRead failed: {Msg}", ex.Message);
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<MessageHubResponse?> EditMessageAsync(Guid userId, Guid messageId, string newContent, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+                var payload = JsonSerializer.Serialize(new { Content = newContent });
+                var httpContent = new StringContent(payload, Encoding.UTF8, "application/json");
+                var response = await client.PutAsync($"/api/messages/edit/{messageId}", httpContent);
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<MessageHubResponse>(json, _jsonOptions);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning("Edit failed: {Msg}", ex.Message); }
+            return null;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> DeleteMessageAsync(Guid userId, Guid messageId, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+                var response = await client.DeleteAsync($"/api/messages/delete/{messageId}");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex) { _logger.LogWarning("Delete failed: {Msg}", ex.Message); }
+            return false;
+        }
+
+        /// <inheritdoc />
+        public async Task<MessageHubResponse?> GetMessageByIdAsync(Guid userId, Guid messageId, string? token = null)
+        {
+            try
+            {
+                var client = _httpClient;
+                ApplyToken(client, token);
+                var response = await client.GetAsync($"/api/messages/{messageId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<MessageHubResponse>(json, _jsonOptions);
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning("GetById failed: {Msg}", ex.Message); }
+            return null;
         }
 
         // ── helpers ──────────────────────────────────────────────
@@ -75,13 +178,14 @@ namespace ConnectHub.HubService.Services
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
 
-        private static object BuildFallback(Guid senderId, Guid receiverId, string content) => new
+        private static object BuildFallback(Guid senderId, Guid receiverId, string content, string? mediaUrl = null, string messageType = "TEXT") => new
         {
             MessageId  = Guid.NewGuid(),
             SenderId   = senderId,
             ReceiverId = receiverId,
             Content    = content,
-            MessageType = "TEXT",
+            MessageType = messageType,
+            MediaUrl   = mediaUrl,
             IsRead     = false,
             SentAt     = DateTime.UtcNow
         };

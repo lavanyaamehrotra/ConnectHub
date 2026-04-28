@@ -66,6 +66,11 @@ namespace ConnectHub.AuthService.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)

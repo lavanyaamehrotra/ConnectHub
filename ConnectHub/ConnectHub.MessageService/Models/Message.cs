@@ -11,8 +11,9 @@ namespace ConnectHub.MessageService.Models
         [Required]
         public Guid SenderId { get; set; }
 
-        [Required]
-        public Guid ReceiverId { get; set; }
+        public Guid? ReceiverId { get; set; }
+
+        public Guid? RoomId { get; set; }
 
         [Required]
         [MaxLength(2000)]

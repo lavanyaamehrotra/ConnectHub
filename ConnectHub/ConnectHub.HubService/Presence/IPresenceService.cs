@@ -18,5 +18,6 @@ namespace ConnectHub.HubService.Presence
         Task<int> GetConnectionCountAsync();
         Task<List<UserConnection>> GetOnlineUsersInfoAsync();
         Task ClearUserConnectionsAsync(Guid userId);
+        Task PurgeStalePresenceAsync();
     }
 }

@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ConnectHub.GatewayService</RootNamespace>
+    <UserSecretsId>defceff8-c766-45f6-a1e2-964f541bcc99</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

@@ -73,25 +73,34 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(
 // PresenceService is now backed by Redis (still registered as Singleton)
 builder.Services.AddSingleton<IPresenceService, PresenceService>();
 
-// ========== 5. HTTP CLIENTS for downstream microservices ==========
-var messageServiceUrl  = builder.Configuration["Services:MessageService"]  ?? "http://localhost:5003";
-var chatRoomServiceUrl = builder.Configuration["Services:ChatRoomService"] ?? "http://localhost:5005";
-
-builder.Services.AddHttpClient("MessageService", client =>
+// ========== 5. HTTP CLIENTS (Typed) for downstream microservices ==========
+builder.Services.AddHttpClient<IMessageService, MessageServiceClient>(client =>
 {
-    client.BaseAddress = new Uri(messageServiceUrl);
+    client.BaseAddress = new Uri(builder.Configuration["Services:MessageService"] ?? "http://localhost:5003");
     client.Timeout     = TimeSpan.FromSeconds(10);
 });
 
-builder.Services.AddHttpClient("ChatRoomService", client =>
+builder.Services.AddHttpClient<IChatRoomService, ChatRoomServiceClient>(client =>
 {
-    client.BaseAddress = new Uri(chatRoomServiceUrl);
+    client.BaseAddress = new Uri(builder.Configuration["Services:ChatRoomService"] ?? "http://chatroom-service:5004");
+    client.Timeout     = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddHttpClient<INotificationServiceClient, NotificationServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:NotificationService"] ?? "http://notification-service:5007");
+    client.Timeout     = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:AuthService"] ?? "http://auth-service:5000");
     client.Timeout     = TimeSpan.FromSeconds(10);
 });
 
 // ========== 6. SERVICE INTERFACES ==========
-builder.Services.AddScoped<IMessageService,  MessageServiceClient>();
-builder.Services.AddScoped<IChatRoomService, ChatRoomServiceClient>();
+// (Typed clients are already registered above)
+
 
 // ========== 7. CONTROLLERS + SWAGGER ==========
 builder.Services.AddControllers();
@@ -126,32 +135,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ========== 8. CORS ==========
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontends", policy =>
-    {
-        policy
-            .WithOrigins(
-                "http://localhost:4200",
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:5000",
-                "http://localhost:5003",
-                "http://localhost:5005"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
-
 // ========== BUILD ==========
 var app = builder.Build();
 
+// UC4: Purge stale Redis presence data once at startup (prevents race conditions in constructor)
+using (var scope = app.Services.CreateScope())
+{
+    var presenceService = scope.ServiceProvider.GetRequiredService<IPresenceService>();
+    await presenceService.PurgeStalePresenceAsync();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

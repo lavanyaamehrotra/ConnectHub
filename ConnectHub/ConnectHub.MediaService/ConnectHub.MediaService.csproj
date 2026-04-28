@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ConnectHub.MediaService</RootNamespace>
+    <UserSecretsId>621cca59-8e6a-4dc1-b0a3-1feba8e2ffe5</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

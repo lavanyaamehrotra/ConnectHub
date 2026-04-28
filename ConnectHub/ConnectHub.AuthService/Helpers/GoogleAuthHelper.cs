@@ -1,4 +1,5 @@
 using Google.Apis.Auth;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConnectHub.AuthService.Config;
 
@@ -13,13 +14,17 @@ namespace ConnectHub.AuthService.Helpers
     public class GoogleAuthHelper
     {
         private readonly GoogleAuthSettings _googleSettings;
+        private readonly ILogger<GoogleAuthHelper> _logger;
 
         /// <summary>
         /// Constructor - Receives Google OAuth credentials from appsettings.json
         /// </summary>
-        public GoogleAuthHelper(IOptions<GoogleAuthSettings> googleSettings)
+        public GoogleAuthHelper(
+            IOptions<GoogleAuthSettings> googleSettings,
+            ILogger<GoogleAuthHelper> logger)
         {
             _googleSettings = googleSettings.Value;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,8 +34,14 @@ namespace ConnectHub.AuthService.Helpers
         /// </summary>
         /// <param name="idToken">Google ID token from frontend</param>
         /// <returns>User payload if valid, null if invalid</returns>
-        public async Task<GoogleJsonWebSignature.Payload?> VerifyGoogleToken(string idToken)
+        public virtual async Task<GoogleJsonWebSignature.Payload?> VerifyGoogleToken(string idToken)
         {
+            if (string.IsNullOrWhiteSpace(_googleSettings.ClientId))
+            {
+                _logger.LogError("Google ClientId is not configured. Check appsettings.json Google:ClientId.");
+                return null;
+            }
+
             try
             {
                 ///  VALIDATION SETTINGS - Tells Google what to check
@@ -54,10 +65,11 @@ namespace ConnectHub.AuthService.Helpers
                 /// - Subject: unique Google user ID (stays same forever)
                 return payload;
             }
-            catch
+            catch (Exception ex)
             {
                 /// TOKEN IS INVALID (expired, fake, or wrong app)
                 /// Return null - login should fail
+                _logger.LogError(ex, "Google token verification failed: {Message}", ex.Message);
                 return null;
             }
         }

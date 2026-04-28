@@ -39,7 +39,7 @@ namespace ConnectHub.HubService.Controllers
 
         // GET /api/presence/info — detailed connection info (admin)
         [HttpGet("info")]
-        public async Task<IActionResult> GetConnectionInfo()
+        public async Task<IActionResult> GetOnlineUsersInfo()
         {
             var info = await _presenceService.GetOnlineUsersInfoAsync();
             return Ok(info);
@@ -47,7 +47,7 @@ namespace ConnectHub.HubService.Controllers
 
         // GET /api/presence/user/{userId} — is a specific user online?
         [HttpGet("user/{userId:guid}")]
-        public async Task<IActionResult> IsUserOnline(Guid userId)
+        public async Task<IActionResult> IsOnline(Guid userId)
         {
             var online = await _presenceService.IsUserOnlineAsync(userId);
             return Ok(new { userId, online });

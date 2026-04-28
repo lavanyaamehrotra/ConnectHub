@@ -95,16 +95,16 @@ namespace ConnectHub.NotificationService.Services
         // -----------------------------------------------------------
         public async Task SendBulkAsync(BulkNotificationDto dto)
         {
-            var tasks = dto.RecipientIds.Select(recipientId =>
-                SendAsync(new CreateNotificationDto
+            foreach (var recipientId in dto.RecipientIds)
+            {
+                await SendAsync(new CreateNotificationDto
                 {
                     RecipientId = recipientId,
                     Type        = dto.Type,
                     Title       = dto.Title,
                     Message     = dto.Message
-                }));
-
-            await Task.WhenAll(tasks);
+                });
+            }
 
             _logger.LogInformation("Bulk notification sent to {Count} users", dto.RecipientIds.Count);
         }

@@ -6,6 +6,7 @@ using ConnectHub.ChatRoomService.Data;
 using ConnectHub.ChatRoomService.Interfaces;
 using ConnectHub.ChatRoomService.Services;
 using ConnectHub.ChatRoomService.Hubs;
+using ConnectHub.ChatRoomService.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddScoped<IChatRoomRepository, ChatRoomRepository>();
 builder.Services.AddScoped<IChatRoomService, ChatRoomService>();
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
@@ -84,7 +86,6 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

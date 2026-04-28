@@ -47,6 +47,20 @@ namespace ConnectHub.HubService.Presence
             _logger = logger;
         }
 
+        public async Task PurgeStalePresenceAsync()
+        {
+            try
+            {
+                await _db.KeyDeleteAsync(ConnectionsHash);
+                await _db.KeyDeleteAsync(OnlineUsersSet);
+                _logger.LogInformation("Cleared stale presence data on startup.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Could not purge presence data: {Msg}", ex.Message);
+            }
+        }
+
         // -----------------------------------------------------------
         // Called from ChatHub.OnConnectedAsync()
         // 1. Add connectionId to the user's Redis SET
@@ -108,16 +122,35 @@ namespace ConnectHub.HubService.Presence
         public async Task<List<Guid>> GetOnlineUserIdsAsync()
         {
             var members = await _db.SetMembersAsync(OnlineUsersSet);
-            return members
-                .Select(m => Guid.TryParse(m.ToString(), out var g) ? g : Guid.Empty)
-                .Where(g => g != Guid.Empty)
-                .ToList();
+            var result = new List<Guid>();
+            foreach (var m in members)
+            {
+                if (Guid.TryParse(m.ToString(), out var userId))
+                {
+                    // VERIFY: Does this user actually have active connections in Redis?
+                    // The Set member is just an index; the UserKey is the source of truth.
+                    if (await _db.KeyExistsAsync(UserKey(userId)))
+                    {
+                        result.Add(userId);
+                    }
+                    else
+                    {
+                        // Clean up stale index entry
+                        await _db.SetRemoveAsync(OnlineUsersSet, m);
+                    }
+                }
+            }
+            return result;
         }
 
         // True if user has at least one active connection
         public async Task<bool> IsUserOnlineAsync(Guid userId)
         {
-            return await _db.SetContainsAsync(OnlineUsersSet, userId.ToString());
+            // Must check both the set AND the actual connection key
+            var inSet = await _db.SetContainsAsync(OnlineUsersSet, userId.ToString());
+            if (!inSet) return false;
+            
+            return await _db.KeyExistsAsync(UserKey(userId));
         }
 
         // Total active connections across all users

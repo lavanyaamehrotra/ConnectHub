@@ -46,6 +46,7 @@ namespace ConnectHub.AuthService.Controllers
         /// LOGIN - Authenticate and get JWT token
         /// POST /api/auth/login
         /// Public endpoint - no authentication required
+        /// Returns 200 with IsDeactivated=true if credentials correct but account off
         /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -54,9 +55,10 @@ namespace ConnectHub.AuthService.Controllers
                 return BadRequest(ModelState);
 
             var result = await _authService.LoginAsync(request);
-            
-            if (!result.Success)
-                return Unauthorized(result);  // 401 Unauthorized
+
+            // Return 200 even for deactivated accounts so frontend can read IsDeactivated flag
+            if (!result.Success && !result.IsDeactivated)
+                return Unauthorized(result);
 
             return Ok(result);
         }
@@ -81,11 +83,30 @@ namespace ConnectHub.AuthService.Controllers
         }
 
         /// <summary>
+        /// REACTIVATE - Re-enable a previously deactivated account
+        /// POST /api/auth/reactivate
+        /// Public endpoint - user already verified their password during login
+        /// </summary>
+        [HttpPost("reactivate")]
+        public async Task<IActionResult> Reactivate([FromBody] LoginRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.ReactivateAccountAsync(request.UsernameOrEmail);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// LOGOUT - Update user's online status
         /// POST /api/auth/logout
         /// Requires authentication (must have valid JWT token)
         /// </summary>
-        [Authorize]  // <-- This endpoint requires a valid JWT token
+        [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
