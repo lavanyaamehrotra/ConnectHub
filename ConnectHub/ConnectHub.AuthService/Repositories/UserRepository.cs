@@ -48,7 +48,10 @@ namespace ConnectHub.AuthService.Repositories
         /// </summary>
         public async Task<User?> GetByUsernameOrEmailAsync(string usernameOrEmail)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+            var lowerTerm = usernameOrEmail.ToLower();
+            return await _context.Users.FirstOrDefaultAsync(u => 
+                u.Username.ToLower() == lowerTerm || 
+                u.Email.ToLower() == lowerTerm);
         }
 
         /// <summary>
