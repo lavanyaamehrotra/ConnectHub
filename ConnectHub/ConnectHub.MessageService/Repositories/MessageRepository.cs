@@ -26,7 +26,7 @@ namespace ConnectHub.MessageService.Repositories
                 .Where(m => !m.IsDeleted)
                 .Where(m => (m.SenderId == userId1 && m.ReceiverId == userId2) ||
                            (m.SenderId == userId2 && m.ReceiverId == userId1))
-                .OrderBy(m => m.SentAt)
+                .OrderByDescending(m => m.SentAt)
                 .ToListAsync();
         }
 
@@ -34,7 +34,7 @@ namespace ConnectHub.MessageService.Repositories
         {
             return await _context.Messages
                 .Where(m => !m.IsDeleted && m.RoomId == roomId)
-                .OrderBy(m => m.SentAt)
+                .OrderByDescending(m => m.SentAt)
                 .ToListAsync();
         }
 
