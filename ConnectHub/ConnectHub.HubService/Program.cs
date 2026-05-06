@@ -55,7 +55,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ========== 2. SIGNALR ==========
+
+// ========== 3. SIGNALR ==========
 builder.Services.AddSignalR();
 
 // ========== 3. CUSTOM USER ID PROVIDER ==========
@@ -147,6 +148,8 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

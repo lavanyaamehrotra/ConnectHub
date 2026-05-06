@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using MailKit.Net.Smtp;
@@ -182,6 +183,9 @@ namespace ConnectHub.NotificationService.Messaging
                 }
 
                 // 3. Send email via MailKit (only if SMTP is configured)
+                _logger.LogInformation("Attempting email dispatch for {RecipientId} (Notification: {Id})", 
+                    evt.RecipientId, evt.NotificationId);
+
                 var emailSubject = $"{senderName} messaged you on ConnectHub";
                 var emailBody = $"Hi! {senderName} sent you a message: \"{evt.Message}\"\n\nLog in to ConnectHub to reply.";
                 
@@ -227,18 +231,22 @@ namespace ConnectHub.NotificationService.Messaging
                 var smtpHost  = _config["Email:SmtpHost"];
                 var smtpPort  = int.Parse(_config["Email:SmtpPort"] ?? "587");
                 var smtpUser  = _config["Email:SmtpUser"];
-                var smtpPass  = _config["Email:SmtpPass"];
+                var smtpPass  = _config["Email:SmtpPass"]?.Trim().Replace(" ", "");
                 var fromEmail = _config["Email:From"] ?? "noreply@connecthub.com";
 
-                if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser))
+                if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))
                 {
-                    _logger.LogDebug("SMTP not configured — skipping email for {RecipientId}",
-                        recipientId);
+                    _logger.LogWarning("SMTP not fully configured (Host: {Host}, User: {User}, Pass: {PassSet}) — skipping email for {RecipientId}",
+                        smtpHost ?? "MISSING", smtpUser ?? "MISSING", !string.IsNullOrEmpty(smtpPass), recipientId);
                     return;
                 }
 
                 var recipientEmail = await GetUserEmailAsync(recipientId);
-                if (string.IsNullOrEmpty(recipientEmail)) return;
+                if (string.IsNullOrEmpty(recipientEmail))
+                {
+                    _logger.LogWarning("Could not find email for recipient {RecipientId} — skipping email dispatch", recipientId);
+                    return;
+                }
 
                 var email = new MimeMessage();
                 email.From.Add(MailboxAddress.Parse(fromEmail));
@@ -246,18 +254,29 @@ namespace ConnectHub.NotificationService.Messaging
                 email.Subject = subject;
                 email.Body    = new TextPart("plain") { Text = body };
 
+                _logger.LogInformation("Attempting to connect to SMTP {Host}:{Port} as {User}...", smtpHost, smtpPort, smtpUser);
+                
                 using var smtp = new SmtpClient();
-                await smtp.ConnectAsync(smtpHost, smtpPort,
-                    MailKit.Security.SecureSocketOptions.StartTls);
-                await smtp.AuthenticateAsync(smtpUser, smtpPass);
-                await smtp.SendAsync(email);
-                await smtp.DisconnectAsync(true);
+                
+                // For development: bypass certificate validation if it's causing issues
+                // In production, you should use valid certificates.
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
-                _logger.LogInformation("Email sent to {RecipientId}", recipientId);
+                // Use StartTls for port 587 (Standard for Gmail/Outlook)
+                await smtp.ConnectAsync(smtpHost, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
+                
+                _logger.LogDebug("SMTP connected to {Host}. Authenticating as {User}...", smtpHost, smtpUser);
+                await smtp.AuthenticateAsync(smtpUser, smtpPass);
+                
+                _logger.LogInformation("SMTP authenticated. Sending email to {Email}...", recipientEmail);
+                await smtp.SendAsync(email);
+                
+                await smtp.DisconnectAsync(true);
+                _logger.LogInformation("Email successfully sent to {RecipientId} ({Email})", recipientId, recipientEmail);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("Email failed for {RecipientId}: {Msg}",
+                _logger.LogError(ex, "Email dispatch failed for {RecipientId}: {Msg}",
                     recipientId, ex.Message);
             }
         }
@@ -269,16 +288,31 @@ namespace ConnectHub.NotificationService.Messaging
                 using var scope = _scopeFactory.CreateScope();
                 var factory     = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                 var client      = factory.CreateClient("AuthService");
-                return await client.GetFromJsonAsync<UserResponse>($"/api/user/{userId}");
+                
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                return await client.GetFromJsonAsync<UserResponse>($"/api/user/{userId}", options);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning("Failed to fetch user info for {UserId}: {Msg}", userId, ex.Message);
                 return null;
             }
         }
 
-        private class UserResponse { public string Username { get; set; } = ""; public string DisplayName { get; set; } = ""; }
-        private class UserEmailResponse { public string Email { get; set; } = ""; }
+        private class UserResponse 
+        { 
+            [JsonPropertyName("username")]
+            public string Username { get; set; } = ""; 
+
+            [JsonPropertyName("displayName")]
+            public string DisplayName { get; set; } = ""; 
+        }
+
+        private class UserEmailResponse 
+        { 
+            [JsonPropertyName("email")]
+            public string Email { get; set; } = ""; 
+        }
 
         private async Task<string?> GetUserEmailAsync(Guid userId)
         {
@@ -287,12 +321,20 @@ namespace ConnectHub.NotificationService.Messaging
                 using var scope = _scopeFactory.CreateScope();
                 var factory     = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                 var client      = factory.CreateClient("AuthService");
-                var result = await client
-                    .GetFromJsonAsync<UserEmailResponse>($"/api/user/{userId}/email");
+                
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var result = await client.GetFromJsonAsync<UserEmailResponse>($"/api/user/{userId}/email", options);
+                
+                if (string.IsNullOrEmpty(result?.Email))
+                {
+                    _logger.LogWarning("AuthService returned empty email for user {UserId}", userId);
+                }
+                
                 return result?.Email;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning("Failed to fetch email for user {UserId}: {Msg}", userId, ex.Message);
                 return null;
             }
         }

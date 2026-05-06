@@ -4,17 +4,6 @@ using ConnectHub.HubService.Hubs;
 
 namespace ConnectHub.HubService.Controllers
 {
-    // ============================================================
-    // UC5 — NotifyController (inside HubService)
-    //
-    // NotificationService calls POST /api/notify/badge after saving
-    // a notification. This controller uses IHubContext to push the
-    // updated unread count to the user's SignalR connection.
-    //
-    // FROM CLASS DIAGRAM:
-    // "calls IHubContext<ChatHub>.Clients.User(recipientId)
-    //  .SendAsync('NotificationCount', unreadCount)"
-    // ============================================================
     [ApiController]
     [Route("api/notify")]
     public class NotifyController : ControllerBase
@@ -27,14 +16,23 @@ namespace ConnectHub.HubService.Controllers
         }
 
         // POST /api/notify/badge
-        // Body: { "userId": "guid", "unreadCount": 5 }
         [HttpPost("badge")]
         public async Task<IActionResult> PushBadge([FromBody] BadgeUpdateRequest request)
         {
-            // Push real-time badge count to the user's connected clients
             await _hubContext.Clients
                 .User(request.UserId.ToString())
                 .SendAsync("NotificationCount", request.UnreadCount);
+
+            return Ok();
+        }
+
+        // POST /api/notify/room-added
+        [HttpPost("room-added")]
+        public async Task<IActionResult> NotifyRoomAdded([FromBody] RoomAddedRequest request)
+        { 
+            await _hubContext.Clients
+                .User(request.UserId.ToString())
+                .SendAsync("NewRoomAdded", request.RoomId);
 
             return Ok();
         }
@@ -44,5 +42,11 @@ namespace ConnectHub.HubService.Controllers
     {
         public Guid UserId      { get; set; }
         public int  UnreadCount { get; set; }
+    }
+
+    public class RoomAddedRequest
+    {
+        public Guid UserId { get; set; }
+        public Guid RoomId { get; set; }
     }
 }

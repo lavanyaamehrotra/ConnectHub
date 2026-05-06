@@ -226,6 +226,8 @@ services:
       - JWT__Secret=${JWT_SECRET}
       - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
       - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - Email__SmtpHost=${SMTP_HOST}
+      - Email__SmtpPort=${SMTP_PORT}
       - Email__SmtpUser=${SMTP_USER}
       - Email__SmtpPass=${SMTP_PASS}
       - Email__From=${SMTP_USER}
@@ -244,7 +246,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 512m
 
   media-service:
     build:

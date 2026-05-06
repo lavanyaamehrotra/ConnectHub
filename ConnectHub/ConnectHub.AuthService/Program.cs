@@ -130,11 +130,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ========== 10. AUTO-MIGRATE DATABASE ==========
+// ========== 10. AUTO-MIGRATE & CLEANUP DATABASE ==========
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
+
+    // Cleanup stale online statuses
+    try {
+        dbContext.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"IsOnline\" = false");
+        Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
+    }
 }
 
 Console.WriteLine("Auth Service is running!");

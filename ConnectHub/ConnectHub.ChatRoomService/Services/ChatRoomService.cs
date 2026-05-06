@@ -3,6 +3,7 @@ using ConnectHub.ChatRoomService.Data;
 using ConnectHub.ChatRoomService.Models;
 using ConnectHub.ChatRoomService.DTOs;
 using ConnectHub.ChatRoomService.Interfaces;
+using System.Text.Json;
 
 namespace ConnectHub.ChatRoomService.Services
 {
@@ -10,11 +11,15 @@ namespace ConnectHub.ChatRoomService.Services
     {
         private readonly IChatRoomRepository _repository;
         private readonly ILogger<ChatRoomService> _logger;
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
 
-        public ChatRoomService(IChatRoomRepository repository, ILogger<ChatRoomService> logger)
+        public ChatRoomService(IChatRoomRepository repository, ILogger<ChatRoomService> logger, IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _repository = repository;
             _logger = logger;
+            _httpClient = httpClientFactory.CreateClient();
+            _configuration = configuration;
         }
 
         // ========== ROOM MANAGEMENT ==========
@@ -48,6 +53,9 @@ namespace ConnectHub.ChatRoomService.Services
             await _repository.AddMemberAsync(member);
 
             _logger.LogInformation("Room {RoomName} created by {UserId}", room.RoomName, userId);
+
+            // Notify Hub Service that a new room was added for the creator
+            await NotifyRoomAdded(userId, room.RoomId);
 
             return MapToRoomResponse(room);
         }
@@ -162,6 +170,9 @@ namespace ConnectHub.ChatRoomService.Services
             };
             await _repository.AddMemberAsync(member);
 
+            // Notify Hub Service that a new room was added for the user who joined
+            await NotifyRoomAdded(userId, roomId);
+
             return true;
         }
 
@@ -234,6 +245,9 @@ namespace ConnectHub.ChatRoomService.Services
                 IsActive = true
             };
             await _repository.AddMemberAsync(member);
+
+            // NEW: Notify Hub Service that a new room was added for the invited user
+            await NotifyRoomAdded(request.UserId, roomId);
 
             return true;
         }
@@ -341,8 +355,8 @@ namespace ConnectHub.ChatRoomService.Services
             // Relaxed check: 5-second buffer and explicitly include current reader
             var activeMembers = freshMembers.Where(m => m.IsActive).ToList();
             var allRead = activeMembers.All(m => m.UserId == message.SenderId || 
-                                              m.UserId == userId || 
-                                              (m.LastReadAt.HasValue && m.LastReadAt.Value.AddSeconds(5) >= message.SentAt)); 
+                                               m.UserId == userId || 
+                                               (m.LastReadAt.HasValue && m.LastReadAt.Value.AddSeconds(5) >= message.SentAt)); 
 
             _logger.LogInformation("DIAGNOSTIC: Room {RoomId}, Message {MsgId} (SentAt: {SentAt}). " +
                                   "Reader {ReaderId}. AllRead: {AllRead}. " +
@@ -388,7 +402,30 @@ namespace ConnectHub.ChatRoomService.Services
             return message.RoomId;
         }
 
-        // ========== MAPPERS ==========
+        // ========== PRIVATE HELPERS ==========
+
+        private async Task NotifyRoomAdded(Guid userId, Guid roomId)
+        {
+            try
+            {
+                var hubServiceUrl = _configuration["HUB_SERVICE_URL"] ?? "http://connecthub-hub:5006";
+                var endpoint = $"{hubServiceUrl}/api/notify/room-added";
+                
+                var payload = new { UserId = userId, RoomId = roomId };
+                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync(endpoint, content);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Failed to notify Hub Service: {StatusCode} - {Error}", response.StatusCode, error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error notifying Hub Service about new room");
+            }
+        }
 
         private static ChatRoomResponse MapToRoomResponse(ChatRoom room)
         {

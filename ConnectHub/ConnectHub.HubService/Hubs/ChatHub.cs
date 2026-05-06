@@ -397,6 +397,13 @@ namespace ConnectHub.HubService.Hubs
             }
         }
 
+        public async Task RequestOnlineUsers()
+        {
+            var onlineUsers = await _presenceService.GetOnlineUserIdsAsync();
+            await Clients.Caller.SendAsync("OnlineUsers", onlineUsers);
+            _logger.LogInformation("User {UserId} requested the online users list", GetUserId());
+        }
+
         private Guid GetUserId()
         {
             var userIdStr = Context.UserIdentifier;
