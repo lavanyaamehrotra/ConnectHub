@@ -84,15 +84,22 @@ namespace ConnectHub.NotificationService.Messaging
         private void ConnectAndConsume()
         {
             // DispatchConsumersAsync = true is REQUIRED for AsyncEventingBasicConsumer
-            var factory = new ConnectionFactory
+            var factory = new ConnectionFactory();
+            
+            if (!string.IsNullOrEmpty(_config["RabbitMQ:Url"]))
             {
-                HostName               = _config["RabbitMQ:Host"]     ?? "localhost",
-                Port                   = int.Parse(_config["RabbitMQ:Port"] ?? "5672"),
-                UserName               = _config["RabbitMQ:Username"] ?? "guest",
-                Password               = _config["RabbitMQ:Password"] ?? "guest",
-                VirtualHost            = _config["RabbitMQ:VHost"]    ?? "/",
-                DispatchConsumersAsync = true
-            };
+                factory.Uri = new Uri(_config["RabbitMQ:Url"]);
+            }
+            else 
+            {
+                factory.HostName    = _config["RabbitMQ:Host"]     ?? "localhost";
+                factory.Port        = int.Parse(_config["RabbitMQ:Port"] ?? "5672");
+                factory.UserName    = _config["RabbitMQ:Username"] ?? "guest";
+                factory.Password    = _config["RabbitMQ:Password"] ?? "guest";
+                factory.VirtualHost = _config["RabbitMQ:VHost"]    ?? "/";
+            }
+
+            factory.DispatchConsumersAsync = true;
 
             _connection = factory.CreateConnection("NotificationService-Consumer");
             _channel    = _connection.CreateModel();

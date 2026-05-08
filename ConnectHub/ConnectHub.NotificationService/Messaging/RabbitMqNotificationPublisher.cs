@@ -45,15 +45,24 @@ namespace ConnectHub.NotificationService.Messaging
         {
             _logger = logger;
 
-            var factory = new ConnectionFactory
+            var factory = new ConnectionFactory();
+            
+            // Priority 1: Use full AMQP URL if provided (best for CloudAMQP)
+            if (!string.IsNullOrEmpty(config["RabbitMQ:Url"]))
             {
-                HostName         = config["RabbitMQ:Host"]     ?? "localhost",
-                Port             = int.Parse(config["RabbitMQ:Port"] ?? "5672"),
-                UserName         = config["RabbitMQ:Username"] ?? "guest",
-                Password         = config["RabbitMQ:Password"] ?? "guest",
-                VirtualHost      = config["RabbitMQ:VHost"]    ?? "/",
-                DispatchConsumersAsync = true
-            };
+                factory.Uri = new Uri(config["RabbitMQ:Url"]);
+            }
+            else 
+            {
+                // Priority 2: Use individual components (fallback)
+                factory.HostName    = config["RabbitMQ:Host"]     ?? "localhost";
+                factory.Port        = int.Parse(config["RabbitMQ:Port"] ?? "5672");
+                factory.UserName    = config["RabbitMQ:Username"] ?? "guest";
+                factory.Password    = config["RabbitMQ:Password"] ?? "guest";
+                factory.VirtualHost = config["RabbitMQ:VHost"]    ?? "/";
+            }
+
+            factory.DispatchConsumersAsync = true;
 
             _connection = factory.CreateConnection("NotificationService-Publisher");
             _channel    = _connection.CreateModel();
