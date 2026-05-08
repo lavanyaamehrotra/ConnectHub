@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ConnectHub.AuthService/ConnectHub.AuthService.csproj" />
+  <Project Path="ConnectHub.ChatRoomService/ConnectHub.ChatRoomService.csproj" />
+  <Project Path="ConnectHub.MessageService/ConnectHub.MessageService.csproj" />
+  <Project Path="ConnectHub.NotificationService/ConnectHub.NotificationService.csproj" />
+</Solution>

@@ -1,0 +1,314 @@
+services:
+
+  # ════════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ════════════════════════════════════════════════════════════════
+
+  postgres:
+    image: postgres:17
+    container_name: connecthub-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ConnectHubAuthDb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── UC4: Redis — distributed presence tracking ────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: connecthub-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 300m
+
+  # ── UC5: RabbitMQ — async notification dispatch ───────────────
+  # Management UI: http://localhost:15672  (guest / guest)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: connecthub-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── UC6: Azurite — Azure Blob Storage emulator ────────────────
+  # Blob endpoint: http://localhost:10000/devstoreaccount1
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: connecthub-azurite
+    command: azurite --loose --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite_data:/data
+    networks:
+      - connecthub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:10000/devstoreaccount1 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # ════════════════════════════════════════════════════════════════
+  # MICROSERVICES
+  # ════════════════════════════════════════════════════════════════
+
+  auth-service:
+    build:
+      context: ./ConnectHub.AuthService
+      dockerfile: Dockerfile
+    container_name: connecthub-auth
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubAuthDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  message-service:
+    build:
+      context: ./ConnectHub.MessageService
+      dockerfile: Dockerfile
+    container_name: connecthub-message
+    ports:
+      - "5003:5003"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5003
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubMessageDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  chatroom-service:
+    build:
+      context: ./ConnectHub.ChatRoomService
+      dockerfile: Dockerfile
+    container_name: connecthub-chatroom
+    ports:
+      - "5004:5004"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5004
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubChatRoomDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  hub-service:
+    build:
+      context: ./ConnectHub.HubService
+      dockerfile: Dockerfile
+    container_name: connecthub-hub
+    ports:
+      - "5006:5006"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5006
+      - JWT__Secret=${JWT_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      message-service:
+        condition: service_started
+      chatroom-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  notification-service:
+    build:
+      context: ./ConnectHub.NotificationService
+      dockerfile: Dockerfile
+    container_name: connecthub-notification
+    ports:
+      - "5007:5007"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5007
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubNotificationDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - Email__SmtpHost=${SMTP_HOST}
+      - Email__SmtpPort=${SMTP_PORT}
+      - Email__SmtpUser=${SMTP_USER}
+      - Email__SmtpPass=${SMTP_PASS}
+      - Email__From=${SMTP_USER}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      hub-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  media-service:
+    build:
+      context: ./ConnectHub.MediaService
+      dockerfile: Dockerfile
+    container_name: connecthub-media
+    ports:
+      - "5008:5008"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5008
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ConnectHubMediaDb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JWT__Secret=${JWT_SECRET}
+      - Azure__BlobConnectionString=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+    depends_on:
+      postgres:
+        condition: service_healthy
+      azurite:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - connecthub-network
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  gateway:
+    build:
+      context: ./ConnectHub.GatewayService
+      dockerfile: Dockerfile
+    container_name: connecthub-gateway
+    ports:
+      - "8080:5009"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5009
+    depends_on:
+      - auth-service
+      - message-service
+      - chatroom-service
+      - hub-service
+      - notification-service
+      - media-service
+    networks:
+      - connecthub-network
+    restart: on-failure
+
+# ════════════════════════════════════════════════════════════════
+# NETWORKS
+# ════════════════════════════════════════════════════════════════
+networks:
+  connecthub-network:
+    driver: bridge
+
+# ════════════════════════════════════════════════════════════════
+# VOLUMES — all data survives container restarts
+# ════════════════════════════════════════════════════════════════
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  azurite_data:
