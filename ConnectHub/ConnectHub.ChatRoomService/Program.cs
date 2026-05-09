@@ -76,7 +76,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:5000", "http://localhost:5003")
+        policy.WithOrigins(
+                "http://localhost:4200", 
+                "http://localhost:3000", 
+                "http://localhost:5000", 
+                "http://localhost:5003",
+                "https://connecthub-frontend-f8dq.onrender.com")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();

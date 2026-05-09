@@ -136,8 +136,25 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// ========== 8. CORS ==========
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontends", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:4200", 
+                "http://localhost:3000",
+                "https://connecthub-frontend-f8dq.onrender.com")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
 // ========== BUILD ==========
 var app = builder.Build();
+
+app.UseCors("AllowFrontends");
 
 // UC4: Purge stale Redis presence data once at startup (prevents race conditions in constructor)
 using (var scope = app.Services.CreateScope())
