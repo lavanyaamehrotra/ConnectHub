@@ -113,15 +113,6 @@ namespace ConnectHub.MessageService
                 using var scope = app.Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 
-                // 🛡️ AUTO-REPAIR MODE: If we set RESET_DATABASE=true in Render, 
-                // it will drop and recreate the tables once.
-                if (builder.Configuration["RESET_DATABASE"] == "true")
-                {
-                    Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
-                    await dbContext.Database.EnsureDeletedAsync();
-                    Console.WriteLine("Tables deleted. Recreating...");
-                }
-
                 await dbContext.Database.MigrateAsync();
                 Console.WriteLine("Database migration completed successfully!");
             }

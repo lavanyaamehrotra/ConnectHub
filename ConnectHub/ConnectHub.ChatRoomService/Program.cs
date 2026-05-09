@@ -105,25 +105,9 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    // 🔥 AUTO-REPAIR MODE: If we set RESET_DATABASE=true in Render, 
-    // it will drop and recreate the tables once.
-    if (builder.Configuration["RESET_DATABASE"] == "true")
-    {
-        Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
-        try {
-            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE");
-            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE");
-            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE");
-            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory\" CASCADE");
-            Console.WriteLine("Tables cleared successfully.");
-        } catch (Exception ex) {
-            Console.WriteLine($"Cleanup warning: {ex.Message}");
-        }
-    }
-
     Console.WriteLine("Applying Database Migrations...");
     await dbContext.Database.MigrateAsync();
-    Console.WriteLine("Database is up to date!");
+    Console.WriteLine("ChatRoom Database is ready!");
 }
 catch (Exception ex)
 {
