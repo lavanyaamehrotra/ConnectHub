@@ -106,17 +106,19 @@ try
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     Console.WriteLine("Applying Database Migrations...");
-    await dbContext.Database.MigrateAsync();
-
-    // 🛠️ MANUAL SCHEMA REPAIR (For missing Username column)
+    
+    // ☢️ EMERGENCY RESET (Only for ChatRoom tables to fix conflicts)
     try {
-        await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE \"RoomMembers\" ADD COLUMN IF NOT EXISTS \"Username\" character varying(50) DEFAULT '' NOT NULL");
-        Console.WriteLine("Manual schema repair: 'Username' column verified.");
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE");
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE");
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE");
+        Console.WriteLine("Emergency Wipe: ChatRoom tables cleared.");
     } catch (Exception ex) {
-        Console.WriteLine($"Manual repair skip: {ex.Message}");
+        Console.WriteLine($"Wipe skipped: {ex.Message}");
     }
 
-    Console.WriteLine("ChatRoom Database is ready!");
+    await dbContext.Database.MigrateAsync();
+    Console.WriteLine("ChatRoom Database is finally ready!");
 }
 catch (Exception ex)
 {
