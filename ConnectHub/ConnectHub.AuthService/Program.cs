@@ -146,6 +146,15 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // 🛡️ AUTO-REPAIR MODE: If we set RESET_DATABASE=true in Render, 
+    // it will drop and recreate the tables once.
+    if (builder.Configuration["RESET_DATABASE"] == "true")
+    {
+        Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
+        dbContext.Database.EnsureDeleted();
+        Console.WriteLine("Tables deleted. Recreating...");
+    }
+
     dbContext.Database.Migrate();
 
     // 🛡️ ADMIN PROMOTION: Automatically make the main user an Admin
