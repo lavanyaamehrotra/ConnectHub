@@ -111,7 +111,7 @@ try
     {
         Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
         try {
-            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Rooms\" CASCADE");
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE");
             dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE");
             dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE");
             dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory\" CASCADE");
