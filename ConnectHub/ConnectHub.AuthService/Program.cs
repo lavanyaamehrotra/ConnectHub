@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -150,14 +152,14 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine("Applying Database Migrations...");
     dbContext.Database.Migrate();
 
-    // 👑 AUTOMATED ADMIN PROMOTION (For Fresh Start)
-    var adminEmail = builder.Configuration["ADMIN_EMAIL"] ?? "lavanyamehrotra74@gmail.com";
-    var user = dbContext.Users.ToList().FirstOrDefault(u => u.Email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase));
+    // 👑 AUTOMATED ADMIN PROMOTION
+    var adminEmail = "lavanyamehrotra74@gmail.com";
+    var user = dbContext.Users.ToList().FirstOrDefault(u => u.Email.ToLower() == adminEmail.ToLower());
     if (user != null && user.Role != "ADMIN")
     {
         user.Role = "ADMIN";
         dbContext.SaveChanges();
-        Console.WriteLine($"[SECURITY] User {adminEmail} promoted to ADMIN successfully.");
+        Console.WriteLine($"[SECURITY] User {adminEmail} promoted to ADMIN.");
     }
 
     Console.WriteLine("Auth Service Database is ready!");
