@@ -72,13 +72,15 @@ var redisConnection = builder.Configuration["Redis__ConnectionString"]
 Console.WriteLine($"Attempting to connect to Redis: {redisConnection}");
 
 try {
-    var redis = ConnectionMultiplexer.Connect(redisConnection);
+    // We use a multiplexer that doesn't "abort" if the server is down
+    var options = ConfigurationOptions.Parse(redisConnection);
+    options.AbortOnConnectFail = false; 
+    
+    var redis = ConnectionMultiplexer.Connect(options);
     builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
-    Console.WriteLine("Redis connected successfully!");
+    Console.WriteLine("Redis service registered (may still be connecting in background).");
 } catch (Exception ex) {
-    Console.WriteLine($"REDIS ERROR: {ex.Message}. Using fake/noop Redis to prevent crash.");
-    // We could add a mock here, but for now we let it fail gracefully if possible 
-    // or just catch to prevent SIGSEGV.
+    Console.WriteLine($"REDIS CRITICAL ERROR: {ex.Message}. Hub will run but presence will be limited.");
 }
 
 // PresenceService is now backed by Redis (still registered as Singleton)
