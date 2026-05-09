@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Linq;
 using ConnectHub.AuthService.Data;
 using ConnectHub.AuthService.Config;
 using ConnectHub.AuthService.Helpers;
@@ -151,7 +152,7 @@ using (var scope = app.Services.CreateScope())
 
     // 👑 AUTOMATED ADMIN PROMOTION (For Fresh Start)
     var adminEmail = builder.Configuration["ADMIN_EMAIL"] ?? "lavanyamehrotra74@gmail.com";
-    var user = dbContext.Users.FirstOrDefault(u => u.Email == adminEmail);
+    var user = dbContext.Users.ToList().FirstOrDefault(u => u.Email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase));
     if (user != null && user.Role != "ADMIN")
     {
         user.Role = "ADMIN";
