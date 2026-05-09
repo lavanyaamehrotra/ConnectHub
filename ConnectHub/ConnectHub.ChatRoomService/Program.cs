@@ -110,8 +110,15 @@ try
     if (builder.Configuration["RESET_DATABASE"] == "true")
     {
         Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
-        await dbContext.Database.EnsureDeletedAsync();
-        Console.WriteLine("Tables deleted. Recreating...");
+        try {
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Rooms\" CASCADE");
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE");
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE");
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory\" CASCADE");
+            Console.WriteLine("Tables cleared successfully.");
+        } catch (Exception ex) {
+            Console.WriteLine($"Cleanup warning: {ex.Message}");
+        }
     }
 
     Console.WriteLine("Applying Database Migrations...");
