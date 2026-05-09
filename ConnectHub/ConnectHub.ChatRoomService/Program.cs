@@ -118,7 +118,13 @@ try
         Console.WriteLine($"Wipe skipped: {ex.Message}");
     }
 
-    await dbContext.Database.MigrateAsync();
+    try {
+        await dbContext.Database.MigrateAsync();
+        Console.WriteLine("ChatRoom Database migrations applied successfully.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Migration skip: {ex.Message} (Service will attempt to continue...)");
+    }
+
     Console.WriteLine("ChatRoom Database is finally ready!");
 }
 catch (Exception ex)
