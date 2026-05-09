@@ -111,11 +111,16 @@ builder.Services.AddSwaggerGen(c =>
 // ========== BUILD ==========
 var app = builder.Build();
 
-// Auto-run EF migrations on startup
+// Auto-run EF migrations with Resilience Shield
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    try {
+        db.Database.Migrate();
+        Console.WriteLine("Notification Database is synchronized.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Migration skip: {ex.Message}");
+    }
 }
 
 app.UseSwagger();
