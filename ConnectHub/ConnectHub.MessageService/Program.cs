@@ -100,6 +100,9 @@ namespace ConnectHub.MessageService
 
             app.UseSwagger();
             app.UseSwaggerUI();
+            
+            app.UseCors("AllowAll");
+
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

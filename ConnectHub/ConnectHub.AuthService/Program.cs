@@ -138,11 +138,6 @@ var app = builder.Build();
 
 app.UseCors("AllowFrontends");
 
-// ========== 9. MIDDLEWARE ==========
-// Swagger always enabled (works in Docker environment too)
-app.UseSwagger();
-app.UseSwaggerUI();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
