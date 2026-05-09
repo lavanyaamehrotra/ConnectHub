@@ -107,6 +107,15 @@ try
     
     Console.WriteLine("Applying Database Migrations...");
     await dbContext.Database.MigrateAsync();
+
+    // 🛠️ MANUAL SCHEMA REPAIR (For missing Username column)
+    try {
+        await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE \"RoomMembers\" ADD COLUMN IF NOT EXISTS \"Username\" character varying(50) DEFAULT '' NOT NULL");
+        Console.WriteLine("Manual schema repair: 'Username' column verified.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Manual repair skip: {ex.Message}");
+    }
+
     Console.WriteLine("ChatRoom Database is ready!");
 }
 catch (Exception ex)
