@@ -148,6 +148,17 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     Console.WriteLine("Applying Database Migrations...");
     dbContext.Database.Migrate();
+
+    // 👑 AUTOMATED ADMIN PROMOTION (For Fresh Start)
+    var adminEmail = builder.Configuration["ADMIN_EMAIL"] ?? "lavanyamehrotra74@gmail.com";
+    var user = dbContext.Users.FirstOrDefault(u => u.Email == adminEmail);
+    if (user != null && user.Role != "ADMIN")
+    {
+        user.Role = "ADMIN";
+        dbContext.SaveChanges();
+        Console.WriteLine($"[SECURITY] User {adminEmail} promoted to ADMIN successfully.");
+    }
+
     Console.WriteLine("Auth Service Database is ready!");
 
     // 🛡️ ADMIN PROMOTION: Automatically make the main user an Admin
