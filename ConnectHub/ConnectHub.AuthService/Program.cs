@@ -150,7 +150,12 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     Console.WriteLine("Applying Database Migrations...");
-    dbContext.Database.Migrate();
+    try {
+        dbContext.Database.Migrate();
+        Console.WriteLine("Auth Service migrations applied.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Migration skip: {ex.Message} (Continuing to Admin check...)");
+    }
 
     // 👑 RELIABLE ADMIN PROMOTION
     var adminEmail = "lavanyamehrotra74@gmail.com";
