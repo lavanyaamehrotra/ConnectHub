@@ -108,7 +108,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:4200",
                 "http://localhost:3000",
-                "http://localhost:5173")
+                "https://connecthub-frontend-f8dq.onrender.com")
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
@@ -117,11 +117,16 @@ builder.Services.AddCors(options =>
 // ========== BUILD ==========
 var app = builder.Build();
 
-// Auto-run EF migrations on startup
+// Auto-run EF migrations with Resilience Shield
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    try {
+        db.Database.Migrate();
+        Console.WriteLine("Media Database is synchronized.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Migration skip: {ex.Message}");
+    }
 }
 
 app.UseSwagger();
