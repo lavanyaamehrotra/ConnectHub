@@ -105,81 +105,18 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    // 🏛️ GOD MODE: MANUAL TABLE BUILDER
     try {
-        Console.WriteLine("Manually verifying tables...");
-        
-        // 1. chatrooms
-        await dbContext.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS ""ChatRooms"" (
-                ""RoomId"" uuid NOT NULL PRIMARY KEY,
-                ""Name"" character varying(100) NOT NULL,
-                ""Description"" character varying(500),
-                ""RoomType"" character varying(20) NOT NULL,
-                ""CreatedBy"" uuid NOT NULL,
-                ""CreatedAt"" timestamp with time zone NOT NULL,
-                ""MaxMembers"" integer NOT NULL,
-                ""IsActive"" boolean NOT NULL,
-                ""AvatarUrl"" character varying(500)
-            )");
-
-        // 2. roommembers
-        await dbContext.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS ""RoomMembers"" (
-                ""Id"" uuid NOT NULL PRIMARY KEY,
-                ""RoomId"" uuid NOT NULL,
-                ""UserId"" uuid NOT NULL,
-                ""Username"" character varying(50) NOT NULL,
-                ""Role"" character varying(20) NOT NULL,
-                ""JoinedAt"" timestamp with time zone NOT NULL,
-                ""IsActive"" boolean NOT NULL,
-                ""LastReadMessageId"" uuid,
-                ""LastReadAt"" timestamp with time zone
-            )");
-
-        // 3. roommessages
-        await dbContext.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS ""RoomMessages"" (
-                ""MessageId"" uuid NOT NULL PRIMARY KEY,
-                ""RoomId"" uuid NOT NULL,
-                ""SenderId"" uuid NOT NULL,
-                ""Content"" character varying(2000),
-                ""SentAt"" timestamp with time zone NOT NULL,
-                ""MessageType"" text,
-                ""MediaUrl"" text,
-                ""IsRead"" boolean NOT NULL DEFAULT false,
-                ""ReadAt"" timestamp with time zone,
-                ""IsDeleted"" boolean NOT NULL DEFAULT false
-            )");
-
-        // 🌱 AUTO-SEED DEFAULT ROOM
-        if (!dbContext.ChatRooms.Any())
-        {
-            var generalRoom = new ChatRoom
-            {
-                RoomId = Guid.NewGuid(),
-                RoomName = "General Discussion",
-                Description = "Welcome to ConnectHub!",
-                RoomType = "PUBLIC",
-                CreatedBy = Guid.Empty,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-            dbContext.ChatRooms.Add(generalRoom);
-            await dbContext.SaveChangesAsync();
-            Console.WriteLine("Seed: 'General Discussion' room created.");
-        }
-
-        Console.WriteLine("Manual table verification and seeding complete.");
+        await dbContext.Database.MigrateAsync();
+        Console.WriteLine("ChatRoom Database is synchronized.");
     } catch (Exception ex) {
-        Console.WriteLine($"Manual builder skip: {ex.Message}");
+        Console.WriteLine($"Migration check: {ex.Message}");
     }
 
     Console.WriteLine("ChatRoom Service is 100% ONLINE!");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"DATABASE ERROR: {ex.Message}");
+    Console.WriteLine($"STARTUP ERROR: {ex.Message}");
 }
 
 Console.WriteLine("ChatRoom Service running!");
