@@ -139,6 +139,9 @@ builder.Services.AddCors(options =>
 // ========== BUILD THE APP ==========
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseCors("AllowFrontends");
 
 app.UseAuthentication();
