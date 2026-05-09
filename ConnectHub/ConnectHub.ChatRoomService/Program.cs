@@ -96,12 +96,23 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    // 🔥 AUTO-REPAIR MODE: If we set RESET_DATABASE=true in Render, 
+    // it will drop and recreate the tables once.
+    if (builder.Configuration["RESET_DATABASE"] == "true")
+    {
+        Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
+        await dbContext.Database.EnsureDeletedAsync();
+        Console.WriteLine("Tables deleted. Recreating...");
+    }
+
+    Console.WriteLine("Applying Database Migrations...");
     await dbContext.Database.MigrateAsync();
-    Console.WriteLine("Database migration completed successfully!");
+    Console.WriteLine("Database is up to date!");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Database migration failed: {ex.Message}");
+    Console.WriteLine($"DATABASE ERROR: {ex.Message}");
 }
 
 Console.WriteLine("ChatRoom Service running!");
