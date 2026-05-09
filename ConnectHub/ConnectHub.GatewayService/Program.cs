@@ -64,8 +64,22 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // ========== 2. YARP REVERSE PROXY ==========
-// Routes and clusters are loaded from appsettings.json (ReverseProxy section).
-// This keeps routing config out of code — easy to update without recompiling.
+// We load the base config, then override with production URLs if present
+builder.Configuration.GetSection("ReverseProxy:Clusters:auth-cluster:Destinations:auth-dest:Address").Value = 
+    builder.Configuration["Services:AuthService"] ?? builder.Configuration["ReverseProxy:Clusters:auth-cluster:Destinations:auth-dest:Address"];
+
+builder.Configuration.GetSection("ReverseProxy:Clusters:message-cluster:Destinations:message-dest:Address").Value = 
+    builder.Configuration["Services:MessageService"] ?? builder.Configuration["ReverseProxy:Clusters:message-cluster:Destinations:message-dest:Address"];
+
+builder.Configuration.GetSection("ReverseProxy:Clusters:chatroom-cluster:Destinations:chatroom-dest:Address").Value = 
+    builder.Configuration["Services:ChatRoomService"] ?? builder.Configuration["ReverseProxy:Clusters:chatroom-cluster:Destinations:chatroom-dest:Address"];
+
+builder.Configuration.GetSection("ReverseProxy:Clusters:hub-cluster:Destinations:hub-dest:Address").Value = 
+    builder.Configuration["Services:HubService"] ?? builder.Configuration["ReverseProxy:Clusters:hub-cluster:Destinations:hub-dest:Address"];
+
+builder.Configuration.GetSection("ReverseProxy:Clusters:notification-cluster:Destinations:notification-dest:Address").Value = 
+    builder.Configuration["Services:NotificationService"] ?? builder.Configuration["ReverseProxy:Clusters:notification-cluster:Destinations:notification-dest:Address"];
+
 builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
