@@ -109,7 +109,7 @@ try
     try {
         Console.WriteLine("Manually verifying tables...");
         
-        // 1. ChatRooms
+        // 1. chatrooms
         await dbContext.Database.ExecuteSqlRawAsync(@"
             CREATE TABLE IF NOT EXISTS ""ChatRooms"" (
                 ""RoomId"" uuid NOT NULL PRIMARY KEY,
@@ -123,7 +123,7 @@ try
                 ""AvatarUrl"" character varying(500)
             )");
 
-        // 2. RoomMembers
+        // 2. roommembers
         await dbContext.Database.ExecuteSqlRawAsync(@"
             CREATE TABLE IF NOT EXISTS ""RoomMembers"" (
                 ""Id"" uuid NOT NULL PRIMARY KEY,
@@ -137,7 +137,7 @@ try
                 ""LastReadAt"" timestamp with time zone
             )");
 
-        // 3. RoomMessages
+        // 3. roommessages
         await dbContext.Database.ExecuteSqlRawAsync(@"
             CREATE TABLE IF NOT EXISTS ""RoomMessages"" (
                 ""MessageId"" uuid NOT NULL PRIMARY KEY,
@@ -152,7 +152,25 @@ try
                 ""IsDeleted"" boolean NOT NULL DEFAULT false
             )");
 
-        Console.WriteLine("Manual table verification complete.");
+        // 🌱 AUTO-SEED DEFAULT ROOM
+        if (!dbContext.ChatRooms.Any())
+        {
+            var generalRoom = new ChatRoom
+            {
+                RoomId = Guid.NewGuid(),
+                RoomName = "General Discussion",
+                Description = "Welcome to ConnectHub!",
+                RoomType = "PUBLIC",
+                CreatedBy = Guid.Empty,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            dbContext.ChatRooms.Add(generalRoom);
+            await dbContext.SaveChangesAsync();
+            Console.WriteLine("Seed: 'General Discussion' room created.");
+        }
+
+        Console.WriteLine("Manual table verification and seeding complete.");
     } catch (Exception ex) {
         Console.WriteLine($"Manual builder skip: {ex.Message}");
     }
