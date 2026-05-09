@@ -146,16 +146,23 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // 🛡️ AUTO-REPAIR MODE: If we set RESET_DATABASE=true in Render, 
-    // it will drop and recreate the tables once.
+    // 🛡️ AUTO-REPAIR MODE: Safer, targeted reset
     if (builder.Configuration["RESET_DATABASE"] == "true")
     {
-        Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables...");
-        dbContext.Database.EnsureDeleted();
-        Console.WriteLine("Tables deleted. Recreating...");
+        Console.WriteLine("⚠️ RESET_DATABASE=true detected! Cleaning up tables surgically...");
+        try {
+            // Drop tables one by one to avoid permissions issues with EnsureDeleted()
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Users\" CASCADE");
+            dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory\" CASCADE");
+            Console.WriteLine("Tables cleared successfully.");
+        } catch (Exception ex) {
+            Console.WriteLine($"Cleanup warning: {ex.Message}");
+        }
     }
 
+    Console.WriteLine("Applying Database Migrations...");
     dbContext.Database.Migrate();
+    Console.WriteLine("Auth Service Database is ready!");
 
     // 🛡️ ADMIN PROMOTION: Automatically make the main user an Admin
     try {
