@@ -107,12 +107,13 @@ try
     
     Console.WriteLine("Applying Database Migrations...");
     
-    // ☢️ EMERGENCY RESET (Only for ChatRoom tables to fix conflicts)
+    // ☢️ EMERGENCY RESET (Wipe tables AND history to force recreation)
     try {
         await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE");
         await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE");
         await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE");
-        Console.WriteLine("Emergency Wipe: ChatRoom tables cleared.");
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory\" CASCADE");
+        Console.WriteLine("Emergency Wipe: Tables and History cleared.");
     } catch (Exception ex) {
         Console.WriteLine($"Wipe skipped: {ex.Message}");
     }
