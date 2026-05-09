@@ -152,17 +152,29 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine("Applying Database Migrations...");
     dbContext.Database.Migrate();
 
-    // 👑 AUTOMATED ADMIN PROMOTION
+    // 👑 RELIABLE ADMIN PROMOTION
     var adminEmail = "lavanyamehrotra74@gmail.com";
-    var user = dbContext.Users.ToList().FirstOrDefault(u => u.Email.ToLower() == adminEmail.ToLower());
-    if (user != null && user.Role != "ADMIN")
+    Console.WriteLine($"[SECURITY] Checking Admin status for {adminEmail}...");
+    var user = dbContext.Users.FirstOrDefault(u => u.Email.ToLower() == adminEmail.ToLower());
+    if (user != null)
     {
-        user.Role = "ADMIN";
-        dbContext.SaveChanges();
-        Console.WriteLine($"[SECURITY] User {adminEmail} promoted to ADMIN.");
+        if (user.Role != "ADMIN")
+        {
+            user.Role = "ADMIN";
+            dbContext.SaveChanges();
+            Console.WriteLine($"[SECURITY] User {adminEmail} has been PROMOTED to ADMIN.");
+        }
+        else
+        {
+            Console.WriteLine($"[SECURITY] User {adminEmail} is already an ADMIN.");
+        }
+    }
+    else
+    {
+        Console.WriteLine($"[SECURITY] User {adminEmail} not found. Will promote on next login.");
     }
 
-    Console.WriteLine("Auth Service Database is ready!");
+    Console.WriteLine("Auth Service is fully synchronized!");
 
 
     // Cleanup stale online statuses
