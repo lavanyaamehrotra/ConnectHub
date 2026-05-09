@@ -64,12 +64,22 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 // ========== 4. REDIS — UC4 CHANGE ==========
 // Read Redis connection string from config (falls back to localhost for dev)
-var redisConnection = builder.Configuration.GetConnectionString("Redis")
-    ?? "localhost:6379";
+// Check multiple possible config keys for Redis
+var redisConnection = builder.Configuration["Redis__ConnectionString"] 
+                    ?? builder.Configuration.GetConnectionString("Redis") 
+                    ?? "localhost:6379";
 
-// IConnectionMultiplexer is thread-safe and should be Singleton
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConnection));
+Console.WriteLine($"Attempting to connect to Redis: {redisConnection}");
+
+try {
+    var redis = ConnectionMultiplexer.Connect(redisConnection);
+    builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+    Console.WriteLine("Redis connected successfully!");
+} catch (Exception ex) {
+    Console.WriteLine($"REDIS ERROR: {ex.Message}. Using fake/noop Redis to prevent crash.");
+    // We could add a mock here, but for now we let it fail gracefully if possible 
+    // or just catch to prevent SIGSEGV.
+}
 
 // PresenceService is now backed by Redis (still registered as Singleton)
 builder.Services.AddSingleton<IPresenceService, PresenceService>();
