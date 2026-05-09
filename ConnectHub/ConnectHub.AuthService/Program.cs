@@ -148,6 +148,20 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
 
+    // 🛡️ ADMIN PROMOTION: Automatically make the main user an Admin
+    try {
+        var adminEmail = builder.Configuration["ADMIN_EMAIL"] ?? "lavanyamehrotra74@gmail.com";
+        var adminUser = dbContext.Users.FirstOrDefault(u => u.Email == adminEmail);
+        if (adminUser != null && adminUser.Role != "ADMIN")
+        {
+            adminUser.Role = "ADMIN";
+            dbContext.SaveChanges();
+            Console.WriteLine($"Auth Service: Promoted {adminEmail} to ADMIN!");
+        }
+    } catch (Exception ex) {
+        Console.WriteLine($"Auth Service: Admin promotion failed: {ex.Message}");
+    }
+
     // Cleanup stale online statuses
     try {
         dbContext.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"IsOnline\" = false");
