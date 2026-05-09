@@ -64,21 +64,22 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // ========== 2. YARP REVERSE PROXY ==========
-// We load the base config, then override with production URLs if present
-builder.Configuration.GetSection("ReverseProxy:Clusters:auth-cluster:Destinations:auth-dest:Address").Value = 
-    builder.Configuration["Services:AuthService"] ?? builder.Configuration["ReverseProxy:Clusters:auth-cluster:Destinations:auth-dest:Address"];
+Console.WriteLine("--- GATEWAY ROUTING MAP ---");
+var authUrl = builder.Configuration["Services:AuthService"] ?? "http://localhost:5000";
+var msgUrl = builder.Configuration["Services:MessageService"] ?? "http://localhost:5003";
+var roomUrl = builder.Configuration["Services:ChatRoomService"] ?? "http://localhost:5005";
+var hubUrl = builder.Configuration["Services:HubService"] ?? "http://localhost:5006";
 
-builder.Configuration.GetSection("ReverseProxy:Clusters:message-cluster:Destinations:message-dest:Address").Value = 
-    builder.Configuration["Services:MessageService"] ?? builder.Configuration["ReverseProxy:Clusters:message-cluster:Destinations:message-dest:Address"];
+Console.WriteLine($"Auth Cluster -> {authUrl}");
+Console.WriteLine($"Msg  Cluster -> {msgUrl}");
+Console.WriteLine($"Room Cluster -> {roomUrl}");
+Console.WriteLine($"Hub  Cluster -> {hubUrl}");
+Console.WriteLine("---------------------------");
 
-builder.Configuration.GetSection("ReverseProxy:Clusters:chatroom-cluster:Destinations:chatroom-dest:Address").Value = 
-    builder.Configuration["Services:ChatRoomService"] ?? builder.Configuration["ReverseProxy:Clusters:chatroom-cluster:Destinations:chatroom-dest:Address"];
-
-builder.Configuration.GetSection("ReverseProxy:Clusters:hub-cluster:Destinations:hub-dest:Address").Value = 
-    builder.Configuration["Services:HubService"] ?? builder.Configuration["ReverseProxy:Clusters:hub-cluster:Destinations:hub-dest:Address"];
-
-builder.Configuration.GetSection("ReverseProxy:Clusters:notification-cluster:Destinations:notification-dest:Address").Value = 
-    builder.Configuration["Services:NotificationService"] ?? builder.Configuration["ReverseProxy:Clusters:notification-cluster:Destinations:notification-dest:Address"];
+builder.Configuration.GetSection("ReverseProxy:Clusters:auth-cluster:Destinations:auth-dest:Address").Value = authUrl;
+builder.Configuration.GetSection("ReverseProxy:Clusters:message-cluster:Destinations:message-dest:Address").Value = msgUrl;
+builder.Configuration.GetSection("ReverseProxy:Clusters:chatroom-cluster:Destinations:chatroom-dest:Address").Value = roomUrl;
+builder.Configuration.GetSection("ReverseProxy:Clusters:hub-cluster:Destinations:hub-dest:Address").Value = hubUrl;
 
 builder.Services
     .AddReverseProxy()
