@@ -134,6 +134,11 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("Running temporary DB cleanup for AuthService...");
+    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Users\" CASCADE;");
+    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Auth\" CASCADE;");
+
     dbContext.Database.Migrate();
 
     // Cleanup stale online statuses
