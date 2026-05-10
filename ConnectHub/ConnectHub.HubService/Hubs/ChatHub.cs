@@ -111,6 +111,9 @@ namespace ConnectHub.HubService.Hubs
             var senderId = GetUserId();
             var token    = GetAccessToken();
 
+            // Heartbeat: Ensure sender is marked online during activity
+            await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
+
             var savedMessage = await _messageService.SendMessageAsync(senderId, receiverId, content, token);
 
             await Clients.User(receiverId.ToString().ToLower()).SendAsync("ReceiveMessage", savedMessage);
@@ -142,6 +145,9 @@ namespace ConnectHub.HubService.Hubs
         {
             var senderId = GetUserId();
             var token    = GetAccessToken();
+
+            // Heartbeat: Ensure sender is marked online during activity
+            await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
 
             var savedMessage = await _messageService.SendMediaMessageAsync(senderId, receiverId, content, mediaUrl, messageType, token);
 
@@ -222,6 +228,9 @@ namespace ConnectHub.HubService.Hubs
         public async Task TypingIndicator(Guid recipientId, bool isTyping)
         {
             var senderId = GetUserId();
+            // Heartbeat: Activity keeps user online
+            await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
+
             await Clients.User(recipientId.ToString().ToLower()).SendAsync("UserTyping", new
             {
                 SenderId = senderId,
@@ -232,6 +241,9 @@ namespace ConnectHub.HubService.Hubs
         public async Task RoomTypingIndicator(Guid roomId, bool isTyping)
         {
             var senderId = GetUserId();
+            // Heartbeat: Activity keeps user online
+            await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
+
             await Clients.OthersInGroup(roomId.ToString().ToLower()).SendAsync("RoomUserTyping", new
             {
                 SenderId = senderId,
@@ -246,6 +258,9 @@ namespace ConnectHub.HubService.Hubs
         public async Task EditMessage(Guid messageId, string newContent)
         {
             var senderId = GetUserId();
+            // Heartbeat
+            await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
+
             var token = GetAccessToken();
 
             var updatedMessage = await _messageService.EditMessageAsync(senderId, messageId, newContent, token);
@@ -259,6 +274,9 @@ namespace ConnectHub.HubService.Hubs
         public async Task DeleteMessage(Guid messageId)
         {
             var userId = GetUserId();
+            // Heartbeat
+            await _presenceService.UserConnectedAsync(userId, Context.ConnectionId);
+
             var token = GetAccessToken();
 
             // We need to know who the receiver is to notify them
@@ -306,6 +324,9 @@ namespace ConnectHub.HubService.Hubs
         public async Task MarkMessageRead(Guid messageId, Guid senderId)
         {
             var readerId = GetUserId();
+            // Heartbeat
+            await _presenceService.UserConnectedAsync(readerId, Context.ConnectionId);
+
             var token    = GetAccessToken();
 
             // Broadcast to the sender immediately (optimistic UI)
