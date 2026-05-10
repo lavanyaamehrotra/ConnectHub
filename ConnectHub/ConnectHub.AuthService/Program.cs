@@ -34,10 +34,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Auth")));
 
 // ========== 2. JWT SETTINGS ==========
-var jwtSecret = builder.Configuration["JWT:Secret"] ?? "TemporaryFallbackSecretForStartup";
+var jwtSecret = builder.Configuration["JWT:Secret"] ?? "This-Is-My-Super-Secret-Key-For-JWT-At-Least-32-Characters-Long-ChangeThis!";
 if (builder.Configuration["JWT:Secret"] == null)
 {
-    Console.WriteLine("WARNING: JWT:Secret not configured. Using temporary fallback.");
+    Console.WriteLine("WARNING: JWT:Secret not configured. Using standardized fallback.");
 }
 
 var jwtExpiration = int.TryParse(builder.Configuration["JWT:ExpirationInMinutes"], out var exp) ? exp : 60;
