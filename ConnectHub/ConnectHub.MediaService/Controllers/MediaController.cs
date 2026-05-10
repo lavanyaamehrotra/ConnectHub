@@ -120,6 +120,24 @@ namespace ConnectHub.MediaService.Controllers
             return Ok(new { message = "File deleted successfully." });
         }
 
+        // GET /api/media/download/{fileName}
+        // Serves local files from the uploads folder (fallback)
+        [AllowAnonymous]
+        [HttpGet("download/{fileName}")]
+        public IActionResult DownloadFile(string fileName)
+        {
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", fileName);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+
+            var contentType = "application/octet-stream";
+            if (fileName.EndsWith(".jpg") || fileName.EndsWith(".jpeg")) contentType = "image/jpeg";
+            else if (fileName.EndsWith(".png")) contentType = "image/png";
+            else if (fileName.EndsWith(".gif")) contentType = "image/gif";
+
+            return PhysicalFile(filePath, contentType);
+        }
+
         // GET /api/media/stats
         // Returns upload statistics (admin)
         [HttpGet("stats")]

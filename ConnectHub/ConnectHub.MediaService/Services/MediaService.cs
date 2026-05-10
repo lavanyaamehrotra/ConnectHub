@@ -75,9 +75,23 @@ namespace ConnectHub.MediaService.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Azure Blob Storage upload failed: {Msg}. Using placeholder fallback.", ex.Message);
-                // Fallback for development/environments without Azure setup
-                blobUrl = $"https://api.dicebear.com/7.x/initials/svg?seed={Uri.EscapeDataString(file.FileName)}";
+                _logger.LogWarning("Azure upload failed: {Msg}. Falling back to Local Storage.", ex.Message);
+                
+                // Fallback to Local Disk Storage
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var localStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(localStream);
+                }
+
+                // Use the production URL if possible, otherwise relative
+                var baseUrl = _config["GatewayUrl"] ?? "https://gateway-service-hjaw.onrender.com";
+                blobUrl = $"{baseUrl.TrimEnd('/')}/api/media/download/{fileName}";
             }
 
             // Generate thumbnail URL for images

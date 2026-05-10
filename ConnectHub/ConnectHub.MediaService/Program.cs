@@ -147,6 +147,10 @@ _ = Task.Run(async () =>
 
 
 
+// Ensure uploads directory exists for fallback
+var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseAuthentication();
@@ -158,9 +162,10 @@ Console.WriteLine("  ConnectHub MediaService (UC6)");
 Console.WriteLine("==============================================");
 Console.WriteLine("  REST:    http://localhost:5008/api/media");
 Console.WriteLine("  Swagger: http://localhost:5008/swagger");
+Console.WriteLine("  Local:   " + uploadsFolder);
 Console.WriteLine("  Azure:   " + (builder.Configuration["Azure:BlobConnectionString"] != null
     ? "Azure Blob Storage configured"
-    : "Using Azurite (local emulator)"));
+    : "Using Local Disk Fallback (Render/Dev)"));
 Console.WriteLine("==============================================");
 
 await app.RunAsync();
