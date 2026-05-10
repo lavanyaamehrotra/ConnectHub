@@ -132,9 +132,13 @@ _ = Task.Run(async () =>
 {
     try 
     {
-        await Task.Delay(30000); // 30s delay
+        Console.WriteLine("MediaService: Waiting 100s for DB reset...");
+        await Task.Delay(100000); 
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        Console.WriteLine("--- MEDIA SERVICE CLEAN SLATE: Resetting Tables ---");
+        await dbContext.Database.EnsureDeletedAsync();
 
         Console.WriteLine("Applying database migrations for MediaService in background...");
         await dbContext.Database.MigrateAsync();
