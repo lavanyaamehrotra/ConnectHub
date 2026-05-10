@@ -6,6 +6,7 @@ namespace ConnectHub.ChatRoomService.Models
     /// <summary>
     /// 🏠 CHAT ROOM - Represents a group chat room
     /// </summary>
+    [Table("ChatRoomsList")]
     public class ChatRoom
     {
         [Key]

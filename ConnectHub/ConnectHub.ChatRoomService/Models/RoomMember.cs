@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConnectHub.ChatRoomService.Models
 {
     /// <summary>
     /// 👥 ROOM MEMBER - Represents a user's membership in a chat room
     /// </summary>
+    [Table("ChatRoomMembers")]
     public class RoomMember
     {
         [Key]

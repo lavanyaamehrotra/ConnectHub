@@ -108,14 +108,10 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    Console.WriteLine("ChatRoomService: PERFORMING TOTAL DATABASE RESET...");
     
-    // This will wipe the entire shared database to ensure a clean slate for all services
-    dbContext.Database.EnsureDeleted();
-    Console.WriteLine("ChatRoomService: Database Wiped.");
-
+    Console.WriteLine("ChatRoomService: Running migrations for new schema...");
     dbContext.Database.Migrate();
-    Console.WriteLine("ChatRoomService: Database Re-created and Migrated.");
+    Console.WriteLine("ChatRoomService: Database is READY.");
 }
 catch (Exception ex)
 {

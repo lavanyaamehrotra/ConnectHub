@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConnectHub.ChatRoomService.Models
 {
     /// <summary>
     /// ROOM MESSAGE - Represents a message sent in a chat room
     /// </summary>
+    [Table("ChatRoomMessages")]
     public class RoomMessage
     {
         [Key]
