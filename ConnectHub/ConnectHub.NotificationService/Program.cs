@@ -126,18 +126,13 @@ _ = Task.Run(async () =>
 {
     try
     {
-        Console.WriteLine("NotificationService: Waiting 80s for DB reset...");
-        await Task.Delay(80000); 
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            Console.WriteLine("--- NOTIFICATION SERVICE CLEAN SLATE: Resetting Tables ---");
-            await dbContext.Database.EnsureDeletedAsync();
-
-            Console.WriteLine("Applying database migrations for NotificationService in background...");
+            Console.WriteLine("Applying database migrations for NotificationService...");
             await dbContext.Database.MigrateAsync();
-            Console.WriteLine("NotificationService: Database migration completed successfully!");
+            Console.WriteLine("NotificationService: Database migration completed.");
         }
     }
     catch (Exception ex)

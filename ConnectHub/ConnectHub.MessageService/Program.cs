@@ -112,17 +112,12 @@ namespace ConnectHub.MessageService
             {
                 try 
                 {
-                    Console.WriteLine("MessageService: Waiting 60s for DB reset...");
-                    await Task.Delay(60000); 
                     using var scope = app.Services.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     
-                    Console.WriteLine("--- MESSAGE SERVICE CLEAN SLATE: Resetting Tables ---");
-                    await dbContext.Database.EnsureDeletedAsync();
-                    
-                    Console.WriteLine("Applying database migrations for MessageService in background...");
+                    Console.WriteLine("Applying database migrations for MessageService...");
                     await dbContext.Database.MigrateAsync();
-                    Console.WriteLine("MessageService: Database migration completed successfully!");
+                    Console.WriteLine("MessageService: Database migration completed.");
                 }
                 catch (Exception ex)
                 {
