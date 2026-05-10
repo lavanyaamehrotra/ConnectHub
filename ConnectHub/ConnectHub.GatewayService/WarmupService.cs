@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 namespace ConnectHub.GatewayService;
 
 /// <summary>
@@ -32,7 +34,7 @@ public class WarmupService : BackgroundService
         await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 
         // Warm up immediately on startup
-        _logger.LogInformation("[Warmup] Gateway started — waking up all backend services...");
+        _logger.LogInformation("[Warmup] Gateway started - waking up all backend services...");
         await PingAllServices();
 
         // Then keep-alive ping every 14 minutes
@@ -53,11 +55,11 @@ public class WarmupService : BackgroundService
             try
             {
                 var response = await client.GetAsync(svc.Url);
-                _logger.LogInformation("[Warmup] ✅ {Name} is awake (HTTP {Status})", svc.Name, (int)response.StatusCode);
+                _logger.LogInformation("[Warmup] {Name} is awake (HTTP {Status})", svc.Name, (int)response.StatusCode);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[Warmup] ⚠️ {Name} ping failed: {Error}", svc.Name, ex.Message);
+                _logger.LogWarning("[Warmup] {Name} ping failed: {Error}", svc.Name, ex.Message);
             }
         });
 
