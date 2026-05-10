@@ -118,6 +118,9 @@ try
     Console.WriteLine("ChatRoomService: Other connections terminated.");
 
     // 2. Force drop tables one by one with logging
+    try { await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RoomMessages\" DROP COLUMN IF EXISTS \"IsRead\" CASCADE;"); } catch { }
+    try { await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RoomMembers\" DROP COLUMN IF EXISTS \"Username\" CASCADE;"); } catch { }
+    
     await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE;");
     Console.WriteLine("ChatRoomService: Dropped RoomMembers.");
 
