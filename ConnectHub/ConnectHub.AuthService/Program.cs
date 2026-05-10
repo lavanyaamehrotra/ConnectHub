@@ -164,6 +164,20 @@ try
         Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
     }
     Console.WriteLine("AuthService: Database is READY.");
+
+    // FORCE ADMIN PROMOTION for specific user
+    try {
+        var adminEmail = "lavanyamehrotra74@gmail.com";
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
+        if (user != null && user.Role != "Admin")
+        {
+            user.Role = "Admin";
+            await dbContext.SaveChangesAsync();
+            Console.WriteLine($"Auth Service: User {adminEmail} promoted to ADMIN successfully.");
+        }
+    } catch (Exception ex) {
+        Console.WriteLine($"Auth Service: Admin promotion failed: {ex.Message}");
+    }
 }
 catch (Exception ex)
 {
