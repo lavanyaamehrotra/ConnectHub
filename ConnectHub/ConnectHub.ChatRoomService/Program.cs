@@ -110,12 +110,27 @@ try
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     Console.WriteLine("ChatRoomService: FORCING HARD RESET of tables...");
     
-    // Nuclear option for this specific service's tables
+    // Terminate other connections to prevent locks
+    var terminateSql = @"
+        SELECT pg_terminate_backend(pid) 
+        FROM pg_stat_activity 
+        WHERE datname = current_database() 
+        AND pid <> pg_backend_pid();
+    ";
+    try { await dbContext.Database.ExecuteSqlRawAsync(terminateSql); } catch { }
+
+    // Harder Nuclear option for this specific service's tables
     var dropSql = @"
-        DROP TABLE IF EXISTS ""RoomMembers"" CASCADE;
-        DROP TABLE IF EXISTS ""RoomMessages"" CASCADE;
-        DROP TABLE IF EXISTS ""ChatRooms"" CASCADE;
-        DROP TABLE IF EXISTS ""__EFMigrationsHistory_ChatRoom"" CASCADE;
+        DROP TABLE IF EXISTS public.""RoomMembers"" CASCADE;
+        DROP TABLE IF EXISTS public.""RoomMessages"" CASCADE;
+        DROP TABLE IF EXISTS public.""ChatRooms"" CASCADE;
+        DROP TABLE IF EXISTS public.""__EFMigrationsHistory_ChatRoom"" CASCADE;
+        
+        -- Also try lowercase just in case
+        DROP TABLE IF EXISTS public.room_members CASCADE;
+        DROP TABLE IF EXISTS public.room_messages CASCADE;
+        DROP TABLE IF EXISTS public.chat_rooms CASCADE;
+        DROP TABLE IF EXISTS public.ef_migrations_history_chat_room CASCADE;
     ";
     await dbContext.Database.ExecuteSqlRawAsync(dropSql);
     Console.WriteLine("ChatRoomService: Tables and History cleared.");
