@@ -109,13 +109,33 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
+    Console.WriteLine("ChatRoomService: Syncing migration history...");
+    var syncSql = @"
+        CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory_ChatRoom"" (
+            ""MigrationId"" character varying(150) NOT NULL,
+            ""ProductVersion"" character varying(32) NOT NULL,
+            CONSTRAINT ""PK___EFMigrationsHistory_ChatRoom"" PRIMARY KEY (""MigrationId"")
+        );
+        INSERT INTO ""__EFMigrationsHistory_ChatRoom"" (""MigrationId"", ""ProductVersion"")
+        VALUES 
+        ('20260420162951_AddCompleteChatRoomFeatures', '8.0.0'),
+        ('20260420164854_AddMissingChatRoomColumns', '8.0.0'),
+        ('20260428193624_AddRoomReadReceipts', '8.0.0'),
+        ('20260428195342_FixMissingIsRead', '8.0.0')
+        ON CONFLICT (""MigrationId"") DO NOTHING;
+    ";
+    await dbContext.Database.ExecuteSqlRawAsync(syncSql);
+
     Console.WriteLine("ChatRoomService: Applying database migrations...");
     await dbContext.Database.MigrateAsync();
     Console.WriteLine("ChatRoomService: Database is READY.");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"CRITICAL ERROR during ChatRoomService startup: {ex.Message}");
+    if (ex.Message.Contains("already exists"))
+        Console.WriteLine("ChatRoomService: Schema already exists, skipping migration conflict.");
+    else
+        Console.WriteLine($"CRITICAL ERROR during ChatRoomService startup: {ex.Message}");
 }
 
 
