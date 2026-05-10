@@ -24,7 +24,7 @@ namespace ConnectHub.MessageService
             }
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(connectionString));
+                options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Message")));
 
             var jwtSecret = builder.Configuration["JWT:Secret"];
             if (string.IsNullOrEmpty(jwtSecret))
