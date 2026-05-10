@@ -21,7 +21,7 @@ var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Port=5433;Database=ConnectHubMediaDb;Username=postgres;Password=postgres123";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connStr));
+    options.UseNpgsql(connStr, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Media")));
 
 // ========== 2. AZURE BLOB STORAGE ==========
 var blobConnectionString = builder.Configuration["Azure:BlobConnectionString"]
