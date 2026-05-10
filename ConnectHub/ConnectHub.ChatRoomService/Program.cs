@@ -108,32 +108,32 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    Console.WriteLine("ChatRoomService: FORCING HARD RESET of tables...");
+    Console.WriteLine("ChatRoomService: ULTIMATE RESET - Clearing ALL tables in current schema...");
     
-    // Terminate other connections to prevent locks
-    var terminateSql = @"
-        SELECT pg_terminate_backend(pid) 
-        FROM pg_stat_activity 
-        WHERE datname = current_database() 
-        AND pid <> pg_backend_pid();
-    ";
-    try { await dbContext.Database.ExecuteSqlRawAsync(terminateSql); } catch { }
+    var ultimateResetSql = @"
+        -- 1. Terminate all other connections
+        SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
+        WHERE datname = current_database() AND pid <> pg_backend_pid();
 
-    // Harder Nuclear option for this specific service's tables
-    var dropSql = @"
-        DROP TABLE IF EXISTS public.""RoomMembers"" CASCADE;
-        DROP TABLE IF EXISTS public.""RoomMessages"" CASCADE;
-        DROP TABLE IF EXISTS public.""ChatRooms"" CASCADE;
-        DROP TABLE IF EXISTS public.""__EFMigrationsHistory_ChatRoom"" CASCADE;
-        
-        -- Also try lowercase just in case
-        DROP TABLE IF EXISTS public.room_members CASCADE;
-        DROP TABLE IF EXISTS public.room_messages CASCADE;
-        DROP TABLE IF EXISTS public.chat_rooms CASCADE;
-        DROP TABLE IF EXISTS public.ef_migrations_history_chat_room CASCADE;
+        -- 2. Drop all tables in current schema
+        DO $$ DECLARE
+            r RECORD;
+        BEGIN
+            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+                EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+            END LOOP;
+        END $$;
     ";
-    await dbContext.Database.ExecuteSqlRawAsync(dropSql);
-    Console.WriteLine("ChatRoomService: Tables and History cleared.");
+
+    try 
+    { 
+        await dbContext.Database.ExecuteSqlRawAsync(ultimateResetSql); 
+        Console.WriteLine("ChatRoomService: Database is now EMPTY.");
+    } 
+    catch (Exception ex) 
+    { 
+        Console.WriteLine($"Warning: Reset partially failed: {ex.Message}");
+    }
 
     await dbContext.Database.MigrateAsync();
     Console.WriteLine("ChatRoomService: Database is READY.");
