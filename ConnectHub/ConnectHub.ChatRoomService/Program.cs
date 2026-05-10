@@ -108,34 +108,14 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    Console.WriteLine("ChatRoomService: STARTING ULTIMATE RESET...");
+    Console.WriteLine("ChatRoomService: PERFORMING TOTAL DATABASE RESET...");
     
-    // 1. Terminate other connections
-    await dbContext.Database.ExecuteSqlRawAsync(@"
-        SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
-        WHERE datname = current_database() AND pid <> pg_backend_pid();
-    ");
-    Console.WriteLine("ChatRoomService: Other connections terminated.");
+    // This will wipe the entire shared database to ensure a clean slate for all services
+    dbContext.Database.EnsureDeleted();
+    Console.WriteLine("ChatRoomService: Database Wiped.");
 
-    // 2. Force drop tables one by one with logging
-    try { await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RoomMessages\" DROP COLUMN IF EXISTS \"IsRead\" CASCADE;"); } catch { }
-    try { await dbContext.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RoomMembers\" DROP COLUMN IF EXISTS \"Username\" CASCADE;"); } catch { }
-    
-    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE;");
-    Console.WriteLine("ChatRoomService: Dropped RoomMembers.");
-
-    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE;");
-    Console.WriteLine("ChatRoomService: Dropped RoomMessages.");
-
-    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE;");
-    Console.WriteLine("ChatRoomService: Dropped ChatRooms.");
-
-    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_ChatRoom\" CASCADE;");
-    Console.WriteLine("ChatRoomService: Dropped History Table.");
-
-    Console.WriteLine("ChatRoomService: Starting Migrations...");
-    await dbContext.Database.MigrateAsync();
-    Console.WriteLine("ChatRoomService: Database is READY.");
+    dbContext.Database.Migrate();
+    Console.WriteLine("ChatRoomService: Database Re-created and Migrated.");
 }
 catch (Exception ex)
 {
