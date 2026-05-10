@@ -109,8 +109,8 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    Console.WriteLine("ChatRoomService: Running migrations for new schema...");
-    dbContext.Database.Migrate();
+    Console.WriteLine("ChatRoomService: Building schema from models (EnsureCreated)...");
+    dbContext.Database.EnsureCreated();
     Console.WriteLine("ChatRoomService: Database is READY.");
 }
 catch (Exception ex)
