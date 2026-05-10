@@ -19,9 +19,9 @@ namespace ConnectHub.MessageService
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrEmpty(connectionString))
             {
-                Console.WriteLine("ERROR: Database connection string is missing!");
-                throw new Exception("Database connection string not found");
+                Console.WriteLine("ERROR: Database connection string 'DefaultConnection' is missing!");
             }
+
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Message")));

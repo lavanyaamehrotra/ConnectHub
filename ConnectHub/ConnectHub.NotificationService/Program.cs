@@ -112,14 +112,21 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Auto-run EF migrations on startup
-using (var scope = app.Services.CreateScope())
+try 
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
-    Console.WriteLine("Applying database migrations for NotificationService...");
-
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("Applying database migrations for NotificationService...");
+        db.Database.Migrate();
+        Console.WriteLine("NotificationService migration completed.");
+    }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"WARNING: NotificationService migration failed: {ex.Message}");
+}
+
 
 app.UseSwagger();
 app.UseSwaggerUI();

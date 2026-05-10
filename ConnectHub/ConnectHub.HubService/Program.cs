@@ -169,11 +169,20 @@ var app = builder.Build();
 app.UseCors("AllowFrontends");
 
 // UC4: Purge stale Redis presence data once at startup (prevents race conditions in constructor)
-using (var scope = app.Services.CreateScope())
+try 
 {
-    var presenceService = scope.ServiceProvider.GetRequiredService<IPresenceService>();
-    await presenceService.PurgeStalePresenceAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var presenceService = scope.ServiceProvider.GetRequiredService<IPresenceService>();
+        await presenceService.PurgeStalePresenceAsync();
+        Console.WriteLine("Redis presence purged successfully.");
+    }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"WARNING: Redis purge failed at startup: {ex.Message}. Service will continue.");
+}
+
 
 app.UseSwagger();
 app.UseSwaggerUI();

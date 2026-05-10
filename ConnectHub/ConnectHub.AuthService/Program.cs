@@ -17,15 +17,23 @@ using ConnectHub.AuthService.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== 1. DATABASE CONFIGURATION ==========
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    Console.WriteLine("ERROR: Connection string 'DefaultConnection' not found.");
+}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Auth")));
 
 // ========== 2. JWT SETTINGS ==========
-var jwtSecret = builder.Configuration["JWT:Secret"]
-    ?? throw new InvalidOperationException("JWT:Secret not configured.");
+var jwtSecret = builder.Configuration["JWT:Secret"] ?? "TemporaryFallbackSecretForStartup";
+if (builder.Configuration["JWT:Secret"] == null)
+{
+    Console.WriteLine("WARNING: JWT:Secret not configured. Using temporary fallback.");
+}
+
 var jwtExpiration = int.TryParse(builder.Configuration["JWT:ExpirationInMinutes"], out var exp) ? exp : 60;
 
 var jwtSettings = new JwtSettings
@@ -131,22 +139,28 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ========== 10. AUTO-MIGRATE & CLEANUP DATABASE ==========
-using (var scope = app.Services.CreateScope())
+try 
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
-    Console.WriteLine("Applying database migrations for AuthService...");
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("Applying database migrations for AuthService...");
+        dbContext.Database.Migrate();
 
-    dbContext.Database.Migrate();
-
-    // Cleanup stale online statuses
-    try {
-        dbContext.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"IsOnline\" = false");
-        Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
-    } catch (Exception ex) {
-        Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
+        // Cleanup stale online statuses
+        try {
+            dbContext.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"IsOnline\" = false");
+            Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
+        } catch (Exception ex) {
+            Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
+        }
     }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"WARNING: AuthService migration failed: {ex.Message}");
+}
+
 
 Console.WriteLine("Auth Service is running!");
 Console.WriteLine("Swagger UI: http://localhost:5000/swagger");

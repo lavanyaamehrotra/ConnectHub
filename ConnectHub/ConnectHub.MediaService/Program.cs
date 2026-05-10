@@ -118,14 +118,21 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Auto-run EF migrations on startup
-using (var scope = app.Services.CreateScope())
+try 
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
-    Console.WriteLine("Applying database migrations for MediaService...");
-
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("Applying database migrations for MediaService...");
+        db.Database.Migrate();
+        Console.WriteLine("MediaService migration completed.");
+    }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"WARNING: MediaService migration failed: {ex.Message}");
+}
+
 
 app.UseSwagger();
 app.UseSwaggerUI();

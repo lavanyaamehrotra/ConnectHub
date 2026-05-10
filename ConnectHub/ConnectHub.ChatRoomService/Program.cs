@@ -12,7 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrEmpty(connectionString))
-    throw new Exception("Database connection string not found");
+{
+    Console.WriteLine("ERROR: Database connection string 'DefaultConnection' not found! Service may fail on DB calls.");
+}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_ChatRoom")));
