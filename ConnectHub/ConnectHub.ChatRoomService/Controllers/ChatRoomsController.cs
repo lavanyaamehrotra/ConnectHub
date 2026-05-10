@@ -37,6 +37,7 @@ namespace ConnectHub.ChatRoomService.Controllers
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpGet("public")]
         public async Task<IActionResult> GetPublicRooms()
         {
