@@ -69,127 +69,172 @@ namespace ConnectHub.HubService.Presence
         // -----------------------------------------------------------
         public async Task UserConnectedAsync(Guid userId, string connectionId)
         {
-            // Add this connectionId to the user's set
-            await _db.SetAddAsync(UserKey(userId), connectionId);
-
-            // Refresh TTL so active users never expire mid-session
-            await _db.KeyExpireAsync(UserKey(userId), UserKeyTtl);
-
-            // Store connection metadata (for GetOnlineUsersInfoAsync)
-            var info = new UserConnection
+            try
             {
-                ConnectionId = connectionId,
-                UserId       = userId,
-                ConnectedAt  = DateTime.UtcNow
-            };
-            await _db.HashSetAsync(ConnectionsHash, connectionId, JsonSerializer.Serialize(info));
+                // Add this connectionId to the user's set
+                await _db.SetAddAsync(UserKey(userId), connectionId);
 
-            // Track this userId as online
-            await _db.SetAddAsync(OnlineUsersSet, userId.ToString());
+                // Refresh TTL so active users never expire mid-session
+                await _db.KeyExpireAsync(UserKey(userId), UserKeyTtl);
 
-            _logger.LogInformation("User {UserId} connected via Redis. ConnId: {ConnId}", userId, connectionId);
+                // Store connection metadata (for GetOnlineUsersInfoAsync)
+                var info = new UserConnection
+                {
+                    ConnectionId = connectionId,
+                    UserId       = userId,
+                    ConnectedAt  = DateTime.UtcNow
+                };
+                await _db.HashSetAsync(ConnectionsHash, connectionId, JsonSerializer.Serialize(info));
+
+                // Track this userId as online
+                await _db.SetAddAsync(OnlineUsersSet, userId.ToString());
+
+                _logger.LogInformation("User {UserId} connected via Redis. ConnId: {ConnId}", userId, connectionId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis UserConnectedAsync failed: {Msg}", ex.Message);
+            }
         }
 
-        // -----------------------------------------------------------
-        // Called from ChatHub.OnDisconnectedAsync()
-        // 1. Remove connectionId from user's SET
-        // 2. If SET is now empty → user is offline, remove from online SET
-        // 3. Remove connection metadata from HASH
-        // -----------------------------------------------------------
         public async Task UserDisconnectedAsync(Guid userId, string connectionId)
         {
-            await _db.SetRemoveAsync(UserKey(userId), connectionId);
-            await _db.HashDeleteAsync(ConnectionsHash, connectionId);
-
-            // Check if user has any remaining connections
-            var remaining = await _db.SetLengthAsync(UserKey(userId));
-            if (remaining == 0)
+            try
             {
-                await _db.KeyDeleteAsync(UserKey(userId));
-                await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
-                _logger.LogInformation("User {UserId} is now OFFLINE (Redis)", userId);
+                await _db.SetRemoveAsync(UserKey(userId), connectionId);
+                await _db.HashDeleteAsync(ConnectionsHash, connectionId);
+
+                // Check if user has any remaining connections
+                var remaining = await _db.SetLengthAsync(UserKey(userId));
+                if (remaining == 0)
+                {
+                    await _db.KeyDeleteAsync(UserKey(userId));
+                    await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
+                    _logger.LogInformation("User {UserId} is now OFFLINE (Redis)", userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis UserDisconnectedAsync failed: {Msg}", ex.Message);
             }
         }
 
-        // Returns all connectionIds for a user (multi-device support)
         public async Task<List<string>> GetConnectionsByUserIdAsync(Guid userId)
         {
-            var members = await _db.SetMembersAsync(UserKey(userId));
-            return members.Select(m => m.ToString()).ToList();
+            try
+            {
+                var members = await _db.SetMembersAsync(UserKey(userId));
+                return members.Select(m => m.ToString()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis GetConnectionsByUserIdAsync failed: {Msg}", ex.Message);
+                return new List<string>();
+            }
         }
 
-        // Returns all currently online user IDs
         public async Task<List<Guid>> GetOnlineUserIdsAsync()
         {
-            var members = await _db.SetMembersAsync(OnlineUsersSet);
-            var result = new List<Guid>();
-            foreach (var m in members)
+            try
             {
-                if (Guid.TryParse(m.ToString(), out var userId))
+                var members = await _db.SetMembersAsync(OnlineUsersSet);
+                var result = new List<Guid>();
+                foreach (var m in members)
                 {
-                    // VERIFY: Does this user actually have active connections in Redis?
-                    // The Set member is just an index; the UserKey is the source of truth.
-                    if (await _db.KeyExistsAsync(UserKey(userId)))
+                    if (Guid.TryParse(m.ToString(), out var userId))
                     {
-                        result.Add(userId);
-                    }
-                    else
-                    {
-                        // Clean up stale index entry
-                        await _db.SetRemoveAsync(OnlineUsersSet, m);
+                        if (await _db.KeyExistsAsync(UserKey(userId)))
+                        {
+                            result.Add(userId);
+                        }
+                        else
+                        {
+                            await _db.SetRemoveAsync(OnlineUsersSet, m);
+                        }
                     }
                 }
+                return result;
             }
-            return result;
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis GetOnlineUserIdsAsync failed: {Msg}", ex.Message);
+                return new List<Guid>();
+            }
         }
 
-        // True if user has at least one active connection
         public async Task<bool> IsUserOnlineAsync(Guid userId)
         {
-            // Must check both the set AND the actual connection key
-            var inSet = await _db.SetContainsAsync(OnlineUsersSet, userId.ToString());
-            if (!inSet) return false;
-            
-            return await _db.KeyExistsAsync(UserKey(userId));
+            try
+            {
+                var inSet = await _db.SetContainsAsync(OnlineUsersSet, userId.ToString());
+                if (!inSet) return false;
+                
+                return await _db.KeyExistsAsync(UserKey(userId));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis IsUserOnlineAsync failed: {Msg}", ex.Message);
+                return false;
+            }
         }
 
-        // Total active connections across all users
         public async Task<int> GetConnectionCountAsync()
         {
-            var onlineUsers = await GetOnlineUserIdsAsync();
-            var total = 0;
-            foreach (var uid in onlineUsers)
-                total += (int)await _db.SetLengthAsync(UserKey(uid));
-            return total;
+            try
+            {
+                var onlineUsers = await GetOnlineUserIdsAsync();
+                var total = 0;
+                foreach (var uid in onlineUsers)
+                    total += (int)await _db.SetLengthAsync(UserKey(uid));
+                return total;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis GetConnectionCountAsync failed: {Msg}", ex.Message);
+                return 0;
+            }
         }
 
-        // Detailed info about all active connections (for admin)
         public async Task<List<UserConnection>> GetOnlineUsersInfoAsync()
         {
-            var entries = await _db.HashGetAllAsync(ConnectionsHash);
-            var result  = new List<UserConnection>();
-            foreach (var entry in entries)
+            try
             {
-                if (!entry.Value.IsNullOrEmpty)
+                var entries = await _db.HashGetAllAsync(ConnectionsHash);
+                var result  = new List<UserConnection>();
+                foreach (var entry in entries)
                 {
-                    var conn = JsonSerializer.Deserialize<UserConnection>(entry.Value.ToString());
-                    if (conn != null) result.Add(conn);
+                    if (!entry.Value.IsNullOrEmpty)
+                    {
+                        var conn = JsonSerializer.Deserialize<UserConnection>(entry.Value.ToString());
+                        if (conn != null) result.Add(conn);
+                    }
                 }
+                return result;
             }
-            return result;
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis GetOnlineUsersInfoAsync failed: {Msg}", ex.Message);
+                return new List<UserConnection>();
+            }
         }
 
-        // Force-remove all connections for a user (admin suspend)
         public async Task ClearUserConnectionsAsync(Guid userId)
         {
-            var connections = await GetConnectionsByUserIdAsync(userId);
-            foreach (var connId in connections)
-                await _db.HashDeleteAsync(ConnectionsHash, connId);
+            try
+            {
+                var connections = await GetConnectionsByUserIdAsync(userId);
+                foreach (var connId in connections)
+                    await _db.HashDeleteAsync(ConnectionsHash, connId);
 
-            await _db.KeyDeleteAsync(UserKey(userId));
-            await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
+                await _db.KeyDeleteAsync(UserKey(userId));
+                await _db.SetRemoveAsync(OnlineUsersSet, userId.ToString());
 
-            _logger.LogInformation("Cleared all Redis connections for user {UserId}", userId);
+                _logger.LogInformation("Cleared all Redis connections for user {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Redis ClearUserConnectionsAsync failed: {Msg}", ex.Message);
+            }
         }
     }
 }
