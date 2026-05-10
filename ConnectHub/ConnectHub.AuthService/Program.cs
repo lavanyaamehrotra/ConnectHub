@@ -135,9 +135,7 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    Console.WriteLine("Running temporary DB cleanup for AuthService...");
-    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Users\" CASCADE;");
-    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Auth\" CASCADE;");
+    Console.WriteLine("Applying database migrations for AuthService...");
 
     dbContext.Database.Migrate();
 

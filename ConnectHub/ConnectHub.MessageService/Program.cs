@@ -106,9 +106,7 @@ namespace ConnectHub.MessageService
                 using var scope = app.Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 
-                Console.WriteLine("Running temporary DB cleanup for MessageService...");
-                await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Messages\" CASCADE;");
-                await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Message\" CASCADE;");
+                Console.WriteLine("Applying database migrations for MessageService...");
 
                 await dbContext.Database.MigrateAsync();
                 Console.WriteLine("Database migration completed successfully!");
