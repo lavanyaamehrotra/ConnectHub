@@ -155,6 +155,11 @@ _ = Task.Run(async () =>
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            
+            Console.WriteLine("--- CLEAN SLATE MODE: Resetting Database ---");
+            await dbContext.Database.EnsureDeletedAsync();
+            Console.WriteLine("Database deleted successfully.");
+            
             Console.WriteLine("Applying database migrations for AuthService in background...");
             await dbContext.Database.MigrateAsync();
 
@@ -173,6 +178,7 @@ _ = Task.Run(async () =>
         Console.WriteLine($"CRITICAL ERROR: AuthService migration failed: {ex.Message}");
     }
 });
+
 
 
 
