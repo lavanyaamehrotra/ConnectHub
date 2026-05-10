@@ -1,10 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Linq;
 using ConnectHub.AuthService.Data;
 using ConnectHub.AuthService.Config;
 using ConnectHub.AuthService.Helpers;
@@ -121,28 +118,13 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// ========== 8. CORS ==========
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontends", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:4200", 
-                "http://localhost:3000",
-                "https://connecthub-frontend-f8dq.onrender.com")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
-
 // ========== BUILD THE APP ==========
 var app = builder.Build();
 
+// ========== 9. MIDDLEWARE ==========
+// Swagger always enabled (works in Docker environment too)
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseCors("AllowFrontends");
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -152,38 +134,12 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    Console.WriteLine("Applying Database Migrations...");
-    try {
-        dbContext.Database.Migrate();
-        Console.WriteLine("Auth Service migrations applied.");
-    } catch (Exception ex) {
-        Console.WriteLine($"Migration skip: {ex.Message} (Continuing to Admin check...)");
-    }
+    
+    Console.WriteLine("Running temporary DB cleanup for AuthService...");
+    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Users\" CASCADE;");
+    dbContext.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Auth\" CASCADE;");
 
-    // 👑 RELIABLE ADMIN PROMOTION
-    var adminEmail = "lavanyamehrotra74@gmail.com";
-    Console.WriteLine($"[SECURITY] Checking Admin status for {adminEmail}...");
-    var user = dbContext.Users.FirstOrDefault(u => u.Email.ToLower() == adminEmail.ToLower());
-    if (user != null)
-    {
-        if (user.Role != "ADMIN")
-        {
-            user.Role = "ADMIN";
-            dbContext.SaveChanges();
-            Console.WriteLine($"[SECURITY] User {adminEmail} has been PROMOTED to ADMIN.");
-        }
-        else
-        {
-            Console.WriteLine($"[SECURITY] User {adminEmail} is already an ADMIN.");
-        }
-    }
-    else
-    {
-        Console.WriteLine($"[SECURITY] User {adminEmail} not found. Will promote on next login.");
-    }
-
-    Console.WriteLine("Auth Service is fully synchronized!");
-
+    dbContext.Database.Migrate();
 
     // Cleanup stale online statuses
     try {
