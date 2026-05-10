@@ -121,6 +121,11 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("Running temporary DB cleanup for MediaService...");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"MediaFiles\" CASCADE;");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Media\" CASCADE;");
+
     db.Database.Migrate();
 }
 

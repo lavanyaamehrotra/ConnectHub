@@ -96,6 +96,13 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("Running temporary DB cleanup for ChatRoomService...");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_ChatRoom\" CASCADE;");
+
     await dbContext.Database.MigrateAsync();
     Console.WriteLine("Database migration completed successfully!");
 }

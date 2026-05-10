@@ -115,6 +115,11 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("Running temporary DB cleanup for NotificationService...");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Notifications\" CASCADE;");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Notification\" CASCADE;");
+
     db.Database.Migrate();
 }
 
