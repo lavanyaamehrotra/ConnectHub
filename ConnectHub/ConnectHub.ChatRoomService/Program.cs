@@ -108,33 +108,29 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    Console.WriteLine("ChatRoomService: ULTIMATE RESET - Clearing ALL tables in current schema...");
+    Console.WriteLine("ChatRoomService: STARTING ULTIMATE RESET...");
     
-    var ultimateResetSql = @"
-        -- 1. Terminate all other connections
+    // 1. Terminate other connections
+    await dbContext.Database.ExecuteSqlRawAsync(@"
         SELECT pg_terminate_backend(pid) FROM pg_stat_activity 
         WHERE datname = current_database() AND pid <> pg_backend_pid();
+    ");
+    Console.WriteLine("ChatRoomService: Other connections terminated.");
 
-        -- 2. Drop all tables in current schema
-        DO $$ DECLARE
-            r RECORD;
-        BEGIN
-            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
-                EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
-            END LOOP;
-        END $$;
-    ";
+    // 2. Force drop tables one by one with logging
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE;");
+    Console.WriteLine("ChatRoomService: Dropped RoomMembers.");
 
-    try 
-    { 
-        await dbContext.Database.ExecuteSqlRawAsync(ultimateResetSql); 
-        Console.WriteLine("ChatRoomService: Database is now EMPTY.");
-    } 
-    catch (Exception ex) 
-    { 
-        Console.WriteLine($"Warning: Reset partially failed: {ex.Message}");
-    }
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE;");
+    Console.WriteLine("ChatRoomService: Dropped RoomMessages.");
 
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE;");
+    Console.WriteLine("ChatRoomService: Dropped ChatRooms.");
+
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_ChatRoom\" CASCADE;");
+    Console.WriteLine("ChatRoomService: Dropped History Table.");
+
+    Console.WriteLine("ChatRoomService: Starting Migrations...");
     await dbContext.Database.MigrateAsync();
     Console.WriteLine("ChatRoomService: Database is READY.");
 }
