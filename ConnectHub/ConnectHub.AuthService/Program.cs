@@ -147,27 +147,33 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ========== 10. AUTO-MIGRATE & CLEANUP DATABASE ==========
-try 
+// Run migrations in background to prevent startup hang
+_ = Task.Run(async () => 
 {
-    using (var scope = app.Services.CreateScope())
+    try 
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        Console.WriteLine("Applying database migrations for AuthService...");
-        dbContext.Database.Migrate();
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            Console.WriteLine("Applying database migrations for AuthService in background...");
+            await dbContext.Database.MigrateAsync();
 
-        // Cleanup stale online statuses
-        try {
-            dbContext.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"IsOnline\" = false");
-            Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
-        } catch (Exception ex) {
-            Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
+            // Cleanup stale online statuses
+            try {
+                await dbContext.Database.ExecuteSqlRawAsync("UPDATE \"Users\" SET \"IsOnline\" = false");
+                Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
+            } catch (Exception ex) {
+                Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
+            }
+            Console.WriteLine("AuthService: Database migration completed successfully!");
         }
     }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"WARNING: AuthService migration failed: {ex.Message}");
-}
+    catch (Exception ex)
+    {
+        Console.WriteLine($"CRITICAL ERROR: AuthService migration failed: {ex.Message}");
+    }
+});
+
 
 
 Console.WriteLine("Auth Service is running!");

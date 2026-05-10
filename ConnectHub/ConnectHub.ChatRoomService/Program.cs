@@ -103,20 +103,23 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<GroupChatHub>("/groupChatHub");
 
-try
+// Run migrations in background to prevent startup hang
+_ = Task.Run(async () => 
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
-    Console.WriteLine("Applying database migrations for ChatRoomService...");
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("Applying database migrations for ChatRoomService in background...");
+        await dbContext.Database.MigrateAsync();
+        Console.WriteLine("ChatRoomService: Database migration completed successfully!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"CRITICAL ERROR: ChatRoomService database migration failed: {ex.Message}");
+    }
+});
 
-    await dbContext.Database.MigrateAsync();
-    Console.WriteLine("Database migration completed successfully!");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"Database migration failed: {ex.Message}");
-}
 
 Console.WriteLine("ChatRoom Service running!");
 Console.WriteLine("Docker -> Swagger: http://localhost:5004/swagger");
