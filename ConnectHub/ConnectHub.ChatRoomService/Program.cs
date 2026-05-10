@@ -108,8 +108,21 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    Console.WriteLine("ChatRoomService: PERFORMING TOTAL CLEAN SWEEP...");
     
-    Console.WriteLine("ChatRoomService: Building schema from models (EnsureCreated)...");
+    var cleanSweepSql = @"
+        DO $$ DECLARE
+            r RECORD;
+        BEGIN
+            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+                EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
+            END LOOP;
+        END $$;
+    ";
+    await dbContext.Database.ExecuteSqlRawAsync(cleanSweepSql);
+    Console.WriteLine("ChatRoomService: Schema is now EMPTY.");
+
+    Console.WriteLine("ChatRoomService: Building schema from models...");
     dbContext.Database.EnsureCreated();
     Console.WriteLine("ChatRoomService: Database is READY.");
 }
