@@ -115,13 +115,32 @@ namespace ConnectHub.MessageService
                     using var scope = app.Services.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     
+                    Console.WriteLine("MessageService: Syncing migration history...");
+                    var syncSql = @"
+                        CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory_Message"" (
+                            ""MigrationId"" character varying(150) NOT NULL,
+                            ""ProductVersion"" character varying(32) NOT NULL,
+                            CONSTRAINT ""PK___EFMigrationsHistory_Message"" PRIMARY KEY (""MigrationId"")
+                        );
+                        INSERT INTO ""__EFMigrationsHistory_Message"" (""MigrationId"", ""ProductVersion"")
+                        VALUES 
+                        ('20240320145622_InitialCreate', '8.0.0'),
+                        ('20240428184512_AddRoomIdToMessages', '8.0.0'),
+                        ('20240428193045_AddReplyToMessageId', '8.0.0')
+                        ON CONFLICT (""MigrationId"") DO NOTHING;
+                    ";
+                    await dbContext.Database.ExecuteSqlRawAsync(syncSql);
+
                     Console.WriteLine("Applying database migrations for MessageService...");
                     await dbContext.Database.MigrateAsync();
                     Console.WriteLine("MessageService: Database migration completed.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"CRITICAL ERROR: MessageService migration failed: {ex.Message}");
+                    if (ex.Message.Contains("already exists"))
+                        Console.WriteLine("MessageService: Schema already exists, skipping migration conflict.");
+                    else
+                        Console.WriteLine($"CRITICAL ERROR: MessageService migration failed: {ex.Message}");
                 }
             });
 

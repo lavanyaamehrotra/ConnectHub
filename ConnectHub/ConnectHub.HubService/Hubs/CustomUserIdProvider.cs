@@ -25,7 +25,8 @@ namespace ConnectHub.HubService.Hubs
         {
             // NameIdentifier claim was set in AuthService JwtHelper.GenerateToken():
             // new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString())
-            return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // Normalize to lowercase for consistent SignalR delivery
+            return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value?.ToLower();
         }
     }
 }

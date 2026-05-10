@@ -406,7 +406,7 @@ namespace ConnectHub.HubService.Hubs
 
         private Guid GetUserId()
         {
-            var userIdStr = Context.UserIdentifier;
+            var userIdStr = Context.UserIdentifier?.ToLower();
             return Guid.TryParse(userIdStr, out var userId) ? userId : Guid.Empty;
         }
 
