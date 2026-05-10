@@ -15,7 +15,7 @@ if (string.IsNullOrEmpty(connectionString))
     throw new Exception("Database connection string not found");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_ChatRoom")));
 
 var jwtSecret = builder.Configuration["JWT:Secret"]
     ?? "This-Is-My-Super-Secret-Key-For-JWT-At-Least-32-Characters-Long-ChangeThis!";

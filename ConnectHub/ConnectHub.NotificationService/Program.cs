@@ -26,7 +26,7 @@ var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Port=5433;Database=ConnectHubNotificationDb;Username=postgres;Password=postgres123";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connStr));
+    options.UseNpgsql(connStr, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Notification")));
 
 // ========== 2. JWT AUTHENTICATION ==========
 var jwtSecret = builder.Configuration["JWT:Secret"]

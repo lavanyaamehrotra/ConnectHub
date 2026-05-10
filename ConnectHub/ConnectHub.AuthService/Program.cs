@@ -24,7 +24,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Auth")));
 
 // ========== 2. JWT SETTINGS ==========
 var jwtSecret = builder.Configuration["JWT:Secret"]
