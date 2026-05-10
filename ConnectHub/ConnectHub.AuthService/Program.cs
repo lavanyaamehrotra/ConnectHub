@@ -137,7 +137,9 @@ var app = builder.Build();
 
 // ========== 9. MIDDLEWARE ==========
 // Swagger always enabled (works in Docker environment too)
+app.UseDeveloperExceptionPage(); 
 app.UseSwagger();
+
 app.UseSwaggerUI();
 
 app.UseAuthentication();

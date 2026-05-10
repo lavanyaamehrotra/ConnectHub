@@ -100,8 +100,20 @@ app.MapGet("/health", () => Results.Ok(new
     time    = DateTime.UtcNow
 }));
 
-// Map YARP — this handles all proxied routes defined in appsettings.json
-app.MapReverseProxy();
+// Map YARP with error logging
+app.MapReverseProxy(proxyPipeline =>
+{
+    proxyPipeline.Use(async (context, next) =>
+    {
+        await next();
+        var proxyFeature = context.GetReverseProxyFeature();
+        if (proxyFeature?.ProxiedDestination != null && context.Response.StatusCode >= 400)
+        {
+            Console.WriteLine($"[YARP] Error: {context.Response.StatusCode} when proxying {context.Request.Path} to {proxyFeature.ProxiedDestination.Model.Config.Address}");
+        }
+    });
+});
+
 
 Console.WriteLine("==============================================");
 Console.WriteLine("  ConnectHub Gateway (YARP)");
