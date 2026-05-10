@@ -70,6 +70,15 @@ builder.Services
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
+// ========== 2b. WARMUP SERVICE ==========
+// Keeps all Render free-tier microservices awake (ping every 14 min).
+// Prevents cold-start 502/429 errors for the first user of the day.
+builder.Services.AddHttpClient("WarmupClient", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(2);
+});
+builder.Services.AddHostedService<WarmupService>();
+
 // ========== 3. CORS ==========
 builder.Services.AddCors(options =>
 {
