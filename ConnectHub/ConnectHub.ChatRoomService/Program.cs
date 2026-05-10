@@ -107,10 +107,18 @@ app.MapHub<GroupChatHub>("/groupChatHub");
 try 
 {
     using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    Console.WriteLine("ChatRoomService: FORCING HARD RESET of tables...");
     
-    Console.WriteLine("ChatRoomService: NUCLEAR RESET - Resetting database for schema sync...");
-    await dbContext.Database.EnsureDeletedAsync();
+    // Nuclear option for this specific service's tables
+    var dropSql = @"
+        DROP TABLE IF EXISTS ""RoomMembers"" CASCADE;
+        DROP TABLE IF EXISTS ""RoomMessages"" CASCADE;
+        DROP TABLE IF EXISTS ""ChatRooms"" CASCADE;
+        DROP TABLE IF EXISTS ""__EFMigrationsHistory_ChatRoom"" CASCADE;
+    ";
+    await dbContext.Database.ExecuteSqlRawAsync(dropSql);
+    Console.WriteLine("ChatRoomService: Tables and History cleared.");
+
     await dbContext.Database.MigrateAsync();
     Console.WriteLine("ChatRoomService: Database is READY.");
 }
