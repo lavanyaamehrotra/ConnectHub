@@ -107,6 +107,7 @@ app.MapHub<GroupChatHub>("/groupChatHub");
 try 
 {
     using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     Console.WriteLine("ChatRoomService: FORCING HARD RESET of tables...");
     
     // Nuclear option for this specific service's tables
