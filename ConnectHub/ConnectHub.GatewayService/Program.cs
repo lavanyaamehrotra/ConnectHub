@@ -154,15 +154,15 @@ public class WarmupService : BackgroundService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<WarmupService> _logger;
 
-    private static readonly (string Name, string Url)[] ServiceEndpoints =
-    [
+    private static readonly (string Name, string Url)[] ServiceEndpoints = new[]
+    {
         ("AuthService",         "https://auth-service-kt3x.onrender.com/swagger/index.html"),
         ("MessageService",      "https://message-service-p29m.onrender.com/swagger/index.html"),
         ("ChatRoomService",     "https://chatroom-service-av9h.onrender.com/swagger/index.html"),
         ("HubService",          "https://hub-service-4xti.onrender.com/swagger/index.html"),
         ("NotificationService", "https://notification-service-gduz.onrender.com/swagger/index.html"),
         ("MediaService",        "https://media-service-os9l.onrender.com/swagger/index.html"),
-    ];
+    };
 
     public WarmupService(IHttpClientFactory httpClientFactory, ILogger<WarmupService> logger)
     {
