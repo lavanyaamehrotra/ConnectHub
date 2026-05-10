@@ -20,8 +20,14 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrEmpty(connectionString))
 {
-    Console.WriteLine("ERROR: Connection string 'DefaultConnection' not found.");
+    Console.WriteLine("ERROR: Connection string 'DefaultConnection' not found. Using a dummy string to prevent DI crash.");
+    connectionString = "Host=localhost;Database=Dummy;Username=dummy;Password=dummy"; 
 }
+else 
+{
+    Console.WriteLine("AuthService: Connection string found (length: " + connectionString.Length + ")");
+}
+
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

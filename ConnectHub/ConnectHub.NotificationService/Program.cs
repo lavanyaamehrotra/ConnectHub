@@ -22,8 +22,17 @@ using ConnectHub.NotificationService.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== 1. DATABASE ==========
-var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Port=5433;Database=ConnectHubNotificationDb;Username=postgres;Password=postgres123";
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connStr))
+{
+    Console.WriteLine("ERROR: NotificationService connection string missing! Using fallback.");
+    connStr = "Host=localhost;Database=Dummy;Username=dummy;Password=dummy";
+}
+else 
+{
+    Console.WriteLine("NotificationService: Connection string found (length: " + connStr.Length + ")");
+}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connStr, x => x.MigrationsHistoryTable("__EFMigrationsHistory_Notification")));

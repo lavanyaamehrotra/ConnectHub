@@ -19,8 +19,14 @@ namespace ConnectHub.MessageService
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrEmpty(connectionString))
             {
-                Console.WriteLine("ERROR: Database connection string 'DefaultConnection' is missing!");
+                Console.WriteLine("ERROR: Database connection string 'DefaultConnection' is missing! Using dummy to prevent DI crash.");
+                connectionString = "Host=localhost;Database=Dummy;Username=dummy;Password=dummy";
             }
+            else 
+            {
+                Console.WriteLine("MessageService: Connection string found (length: " + connectionString.Length + ")");
+            }
+
 
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>

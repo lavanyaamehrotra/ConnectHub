@@ -13,8 +13,14 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrEmpty(connectionString))
 {
-    Console.WriteLine("ERROR: Database connection string 'DefaultConnection' not found! Service may fail on DB calls.");
+    Console.WriteLine("ERROR: Database connection string 'DefaultConnection' not found! Using dummy to prevent DI crash.");
+    connectionString = "Host=localhost;Database=Dummy;Username=dummy;Password=dummy";
 }
+else 
+{
+    Console.WriteLine("ChatRoomService: Connection string found (length: " + connectionString.Length + ")");
+}
+
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
