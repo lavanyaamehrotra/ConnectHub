@@ -107,12 +107,10 @@ namespace ConnectHub.MessageService
             app.MapControllers();
             app.MapHub<ChatHub>("/chatHub");
 
-            // Run migrations in background to prevent startup hang
-            _ = Task.Run(async () => 
+            using (var scope = app.Services.CreateScope())
             {
                 try 
                 {
-                    using var scope = app.Services.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     
                     Console.WriteLine("MessageService: Syncing migration history...");
@@ -142,9 +140,7 @@ namespace ConnectHub.MessageService
                     else
                         Console.WriteLine($"CRITICAL ERROR: MessageService migration failed: {ex.Message}");
                 }
-            });
-
-
+            }
 
             Console.WriteLine("Message Service running! Swagger: http://localhost:5003/swagger");
             await app.RunAsync();

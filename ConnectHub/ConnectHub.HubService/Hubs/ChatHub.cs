@@ -62,12 +62,12 @@ namespace ConnectHub.HubService.Hubs
             // Re-join all the user's room groups
             await RejoinUserRoomsAsync();
 
-            // Tell all OTHER clients this user came online
-            await Clients.Others.SendAsync("UserOnline", userId);
+            // Tell all OTHER clients this user came online (send as lowercase string)
+            await Clients.Others.SendAsync("UserOnline", userId.ToString().ToLower());
 
-            // Send the current online user list to the newly connected client
+            // Send the current online user list to the newly connected client (as lowercase strings)
             var onlineUsers = await _presenceService.GetOnlineUserIdsAsync();
-            await Clients.Caller.SendAsync("OnlineUsers", onlineUsers);
+            await Clients.Caller.SendAsync("OnlineUsers", onlineUsers.Select(u => u.ToString().ToLower()).ToList());
 
             _logger.LogInformation("User {UserId} connected. ConnId: {ConnId}", userId, Context.ConnectionId);
 
@@ -93,7 +93,7 @@ namespace ConnectHub.HubService.Hubs
                     await _authServiceClient.UpdatePresenceAsync(userId, false, token);
                 }
 
-                await Clients.Others.SendAsync("UserOffline", userId);
+                await Clients.Others.SendAsync("UserOffline", userId.ToString().ToLower());
                 _logger.LogInformation("User {UserId} is now offline", userId);
             }
 
