@@ -113,7 +113,7 @@ namespace ConnectHub.HubService.Hubs
 
             var savedMessage = await _messageService.SendMessageAsync(senderId, receiverId, content, token);
 
-            await Clients.User(receiverId.ToString()).SendAsync("ReceiveMessage", savedMessage);
+            await Clients.User(receiverId.ToString().ToLower()).SendAsync("ReceiveMessage", savedMessage);
             await Clients.Caller.SendAsync("MessageSent", savedMessage);
 
             // Notify if offline
@@ -145,7 +145,7 @@ namespace ConnectHub.HubService.Hubs
 
             var savedMessage = await _messageService.SendMediaMessageAsync(senderId, receiverId, content, mediaUrl, messageType, token);
 
-            await Clients.User(receiverId.ToString()).SendAsync("ReceiveMessage", savedMessage);
+            await Clients.User(receiverId.ToString().ToLower()).SendAsync("ReceiveMessage", savedMessage);
             await Clients.Caller.SendAsync("MessageSent", savedMessage);
 
             // Notify if offline
@@ -171,8 +171,8 @@ namespace ConnectHub.HubService.Hubs
         public async Task JoinRoom(Guid roomId)
         {
             var userId = GetUserId();
-            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString("D"));
-            await Clients.OthersInGroup(roomId.ToString("D")).SendAsync("UserJoinedRoom", new
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString("D").ToLower());
+            await Clients.OthersInGroup(roomId.ToString("D").ToLower()).SendAsync("UserJoinedRoom", new
             {
                 UserId   = userId,
                 RoomId   = roomId,
@@ -184,8 +184,8 @@ namespace ConnectHub.HubService.Hubs
         public async Task LeaveRoom(Guid roomId)
         {
             var userId = GetUserId();
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString("D"));
-            await Clients.OthersInGroup(roomId.ToString("D")).SendAsync("UserLeftRoom", new
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString("D").ToLower());
+            await Clients.OthersInGroup(roomId.ToString("D").ToLower()).SendAsync("UserLeftRoom", new
             {
                 UserId = userId,
                 RoomId = roomId,
@@ -200,7 +200,7 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             var savedMessage = await _roomService.SendRoomMessageAsync(senderId, roomId, content, token);
-            await Clients.Group(roomId.ToString()).SendAsync("ReceiveRoomMessage", savedMessage);
+            await Clients.Group(roomId.ToString().ToLower()).SendAsync("ReceiveRoomMessage", savedMessage);
 
             _logger.LogInformation("Room message from {Sender} in room {RoomId}", senderId, roomId);
         }
@@ -211,7 +211,7 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             var savedMessage = await _roomService.SendRoomMediaMessageAsync(senderId, roomId, content, mediaUrl, messageType, token);
-            await Clients.Group(roomId.ToString()).SendAsync("ReceiveRoomMessage", savedMessage);
+            await Clients.Group(roomId.ToString().ToLower()).SendAsync("ReceiveRoomMessage", savedMessage);
 
             _logger.LogInformation("Room media message ({Type}) from {Sender} in room {RoomId}", messageType, senderId, roomId);
         }
@@ -222,7 +222,7 @@ namespace ConnectHub.HubService.Hubs
         public async Task TypingIndicator(Guid recipientId, bool isTyping)
         {
             var senderId = GetUserId();
-            await Clients.User(recipientId.ToString()).SendAsync("UserTyping", new
+            await Clients.User(recipientId.ToString().ToLower()).SendAsync("UserTyping", new
             {
                 SenderId = senderId,
                 IsTyping = isTyping
@@ -232,7 +232,7 @@ namespace ConnectHub.HubService.Hubs
         public async Task RoomTypingIndicator(Guid roomId, bool isTyping)
         {
             var senderId = GetUserId();
-            await Clients.OthersInGroup(roomId.ToString()).SendAsync("RoomUserTyping", new
+            await Clients.OthersInGroup(roomId.ToString().ToLower()).SendAsync("RoomUserTyping", new
             {
                 SenderId = senderId,
                 RoomId   = roomId,
@@ -252,8 +252,8 @@ namespace ConnectHub.HubService.Hubs
             if (updatedMessage == null) return;
             
             // Notify both sender and receiver
-            await Clients.User(senderId.ToString()).SendAsync("MessageEdited", updatedMessage);
-            await Clients.User(updatedMessage.ReceiverId.ToString()).SendAsync("MessageEdited", updatedMessage);
+            await Clients.User(senderId.ToString().ToLower()).SendAsync("MessageEdited", updatedMessage);
+            await Clients.User(updatedMessage.ReceiverId.ToString().ToLower()).SendAsync("MessageEdited", updatedMessage);
         }
 
         public async Task DeleteMessage(Guid messageId)
@@ -268,8 +268,8 @@ namespace ConnectHub.HubService.Hubs
             var success = await _messageService.DeleteMessageAsync(userId, messageId, token);
             if (success)
             {
-                await Clients.User(message.SenderId.ToString()).SendAsync("MessageDeleted", messageId);
-                await Clients.User(message.ReceiverId.ToString()).SendAsync("MessageDeleted", messageId);
+                await Clients.User(message.SenderId.ToString().ToLower()).SendAsync("MessageDeleted", messageId);
+                await Clients.User(message.ReceiverId.ToString().ToLower()).SendAsync("MessageDeleted", messageId);
             }
         }
 
@@ -282,7 +282,7 @@ namespace ConnectHub.HubService.Hubs
             
             if (updatedMessage is RoomMessageDto msg && msg.RoomId != Guid.Empty)
             {
-                await Clients.Group(msg.RoomId.ToString("D")).SendAsync("RoomMessageEdited", updatedMessage);
+                await Clients.Group(msg.RoomId.ToString("D").ToLower()).SendAsync("RoomMessageEdited", updatedMessage);
             }
             else
             {
@@ -299,7 +299,7 @@ namespace ConnectHub.HubService.Hubs
             var roomId = await _roomService.DeleteRoomMessageAsync(userId, messageId, token);
             if (roomId.HasValue)
             {
-                await Clients.Group(roomId.Value.ToString("D")).SendAsync("RoomMessageDeleted", messageId);
+                await Clients.Group(roomId.Value.ToString("D").ToLower()).SendAsync("RoomMessageDeleted", messageId);
             }
         }
 
@@ -309,7 +309,7 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             // Broadcast to the sender immediately (optimistic UI)
-            await Clients.User(senderId.ToString()).SendAsync("MessageRead", new
+            await Clients.User(senderId.ToString().ToLower()).SendAsync("MessageRead", new
             {
                 MessageId = messageId,
                 ReadBy    = readerId,
@@ -331,7 +331,7 @@ namespace ConnectHub.HubService.Hubs
             if (fullyRead)
             {
                 // If it's now fully read, notify the entire group
-                await Clients.Group(roomId.ToString()).SendAsync("RoomMessageRead", new
+                await Clients.Group(roomId.ToString().ToLower()).SendAsync("RoomMessageRead", new
                 {
                     MessageId = messageId,
                     RoomId    = roomId,
@@ -349,7 +349,7 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             // Notify the other user (the sender of the messages we just read)
-            await Clients.User(otherUserId.ToString()).SendAsync("AllMessagesRead", new
+            await Clients.User(otherUserId.ToString().ToLower()).SendAsync("AllMessagesRead", new
             {
                 ReadBy = readerId,
                 ReadAt = DateTime.UtcNow
@@ -365,7 +365,7 @@ namespace ConnectHub.HubService.Hubs
         // ===========================================================
         public async Task NotifyMessageEdited(Guid messageId, Guid receiverId, string newContent)
         {
-            await Clients.User(receiverId.ToString()).SendAsync("MessageEdited", new
+            await Clients.User(receiverId.ToString().ToLower()).SendAsync("MessageEdited", new
             {
                 MessageId  = messageId,
                 NewContent = newContent,
@@ -375,7 +375,7 @@ namespace ConnectHub.HubService.Hubs
 
         public async Task NotifyMessageDeleted(Guid messageId, Guid receiverId)
         {
-            await Clients.User(receiverId.ToString()).SendAsync("MessageDeleted", new
+            await Clients.User(receiverId.ToString().ToLower()).SendAsync("MessageDeleted", new
             {
                 MessageId = messageId,
                 DeletedAt = DateTime.UtcNow
