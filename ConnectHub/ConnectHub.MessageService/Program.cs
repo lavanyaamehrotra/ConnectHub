@@ -85,11 +85,7 @@ namespace ConnectHub.MessageService
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins(
-                               "http://localhost:4200", 
-                               "http://localhost:3000", 
-                               "http://localhost:5000",
-                               "https://connecthub-frontend-f8dq.onrender.com")
+                    policy.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:5000")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials();
@@ -100,9 +96,6 @@ namespace ConnectHub.MessageService
 
             app.UseSwagger();
             app.UseSwaggerUI();
-            
-            app.UseCors("AllowAll");
-
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
@@ -113,12 +106,16 @@ namespace ConnectHub.MessageService
                 using var scope = app.Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 
+                Console.WriteLine("Running temporary DB cleanup for MessageService...");
+                await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Messages\" CASCADE;");
+                await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Message\" CASCADE;");
+
                 await dbContext.Database.MigrateAsync();
                 Console.WriteLine("Database migration completed successfully!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DATABASE ERROR: {ex.Message}");
+                Console.WriteLine($"Database migration failed: {ex.Message}");
             }
 
             Console.WriteLine("Message Service running! Swagger: http://localhost:5003/swagger");

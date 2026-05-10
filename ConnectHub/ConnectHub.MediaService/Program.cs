@@ -108,7 +108,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:4200",
                 "http://localhost:3000",
-                "https://connecthub-frontend-f8dq.onrender.com")
+                "http://localhost:5173")
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
@@ -117,16 +117,16 @@ builder.Services.AddCors(options =>
 // ========== BUILD ==========
 var app = builder.Build();
 
-// Auto-run EF migrations with Resilience Shield
+// Auto-run EF migrations on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try {
-        db.Database.Migrate();
-        Console.WriteLine("Media Database is synchronized.");
-    } catch (Exception ex) {
-        Console.WriteLine($"Migration skip: {ex.Message}");
-    }
+    
+    Console.WriteLine("Running temporary DB cleanup for MediaService...");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"MediaFiles\" CASCADE;");
+    db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"__EFMigrationsHistory_Media\" CASCADE;");
+
+    db.Database.Migrate();
 }
 
 app.UseSwagger();

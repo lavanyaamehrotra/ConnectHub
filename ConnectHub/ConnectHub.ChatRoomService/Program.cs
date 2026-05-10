@@ -76,12 +76,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:4200", 
-                "http://localhost:3000", 
-                "http://localhost:5000", 
-                "http://localhost:5003",
-                "https://connecthub-frontend-f8dq.onrender.com")
+        policy.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:5000", "http://localhost:5003")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -92,9 +87,6 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -105,18 +97,18 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    try {
-        await dbContext.Database.MigrateAsync();
-        Console.WriteLine("ChatRoom Database is synchronized.");
-    } catch (Exception ex) {
-        Console.WriteLine($"Migration check: {ex.Message}");
-    }
+    Console.WriteLine("Running temporary DB cleanup for ChatRoomService...");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMessages\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"RoomMembers\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"ChatRooms\" CASCADE;");
+    await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"__EFMigrationsHistory_ChatRoom\" CASCADE;");
 
-    Console.WriteLine("ChatRoom Service is 100% ONLINE!");
+    await dbContext.Database.MigrateAsync();
+    Console.WriteLine("Database migration completed successfully!");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"STARTUP ERROR: {ex.Message}");
+    Console.WriteLine($"Database migration failed: {ex.Message}");
 }
 
 Console.WriteLine("ChatRoom Service running!");
