@@ -108,7 +108,11 @@ _ = Task.Run(async () =>
 {
     try
     {
+        Console.WriteLine("ChatRoomService: Waiting 15s for DB reset...");
+        await Task.Delay(15000); // Wait for AuthService to finish EnsureDeleted
+        
         using var scope = app.Services.CreateScope();
+
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Console.WriteLine("Applying database migrations for ChatRoomService in background...");
         await dbContext.Database.MigrateAsync();
