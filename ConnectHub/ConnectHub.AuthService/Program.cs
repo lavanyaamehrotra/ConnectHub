@@ -153,8 +153,7 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
-    Console.WriteLine("AuthService: NUCLEAR RESET - Resetting database for schema sync...");
-    await dbContext.Database.EnsureDeletedAsync();
+    Console.WriteLine("AuthService: Applying database migrations...");
     await dbContext.Database.MigrateAsync();
 
     // Cleanup stale online statuses
