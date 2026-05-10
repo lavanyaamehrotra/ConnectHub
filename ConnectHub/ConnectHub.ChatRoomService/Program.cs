@@ -114,6 +114,11 @@ _ = Task.Run(async () =>
         using var scope = app.Services.CreateScope();
 
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        Console.WriteLine("--- CHATROOM CLEAN SLATE: Resetting Tables ---");
+        await dbContext.Database.EnsureDeletedAsync();
+        Console.WriteLine("ChatRoomService tables deleted.");
+
         Console.WriteLine("Applying database migrations for ChatRoomService in background...");
         await dbContext.Database.MigrateAsync();
         Console.WriteLine("ChatRoomService: Database migration completed successfully!");

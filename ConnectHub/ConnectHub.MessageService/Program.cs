@@ -112,8 +112,13 @@ namespace ConnectHub.MessageService
             {
                 try 
                 {
+                    await Task.Delay(20000); // 20s delay
                     using var scope = app.Services.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    
+                    Console.WriteLine("--- MESSAGE SERVICE CLEAN SLATE: Resetting Tables ---");
+                    await dbContext.Database.EnsureDeletedAsync();
+                    
                     Console.WriteLine("Applying database migrations for MessageService in background...");
                     await dbContext.Database.MigrateAsync();
                     Console.WriteLine("MessageService: Database migration completed successfully!");
@@ -123,6 +128,7 @@ namespace ConnectHub.MessageService
                     Console.WriteLine($"CRITICAL ERROR: MessageService migration failed: {ex.Message}");
                 }
             });
+
 
 
             Console.WriteLine("Message Service running! Swagger: http://localhost:5003/swagger");
