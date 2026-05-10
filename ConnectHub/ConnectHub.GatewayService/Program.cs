@@ -144,3 +144,62 @@ Console.WriteLine("  /api/media/**         → MediaService    :5008");
 Console.WriteLine("==============================================");
 
 await app.RunAsync();
+
+// ============================================================
+// WarmupService — keeps all Render free-tier services awake.
+// Pings every 14 min so services never sleep (Render sleeps at 15 min).
+// ============================================================
+public class WarmupService : BackgroundService
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<WarmupService> _logger;
+
+    private static readonly (string Name, string Url)[] ServiceEndpoints =
+    [
+        ("AuthService",         "https://auth-service-kt3x.onrender.com/swagger/index.html"),
+        ("MessageService",      "https://message-service-p29m.onrender.com/swagger/index.html"),
+        ("ChatRoomService",     "https://chatroom-service-av9h.onrender.com/swagger/index.html"),
+        ("HubService",          "https://hub-service-4xti.onrender.com/swagger/index.html"),
+        ("NotificationService", "https://notification-service-gduz.onrender.com/swagger/index.html"),
+        ("MediaService",        "https://media-service-os9l.onrender.com/swagger/index.html"),
+    ];
+
+    public WarmupService(IHttpClientFactory httpClientFactory, ILogger<WarmupService> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        _logger.LogInformation("[Warmup] Gateway started - waking up all backend services...");
+        await PingAllServices();
+
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(14));
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            _logger.LogInformation("[Warmup] Keep-alive ping to all services...");
+            await PingAllServices();
+        }
+    }
+
+    private async Task PingAllServices()
+    {
+        var client = _httpClientFactory.CreateClient("WarmupClient");
+        var tasks = ServiceEndpoints.Select(async svc =>
+        {
+            try
+            {
+                var response = await client.GetAsync(svc.Url);
+                _logger.LogInformation("[Warmup] {Name} awake (HTTP {Status})", svc.Name, (int)response.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[Warmup] {Name} ping failed: {Error}", svc.Name, ex.Message);
+            }
+        });
+        await Task.WhenAll(tasks);
+    }
+}
+
