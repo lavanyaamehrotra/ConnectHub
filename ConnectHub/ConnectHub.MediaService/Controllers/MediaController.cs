@@ -16,7 +16,6 @@ namespace ConnectHub.MediaService.Controllers
     // ============================================================
     [ApiController]
     [Route("api/media")]
-    [Authorize]
     public class MediaController : ControllerBase
     {
         private readonly IMediaService _mediaService;
@@ -27,7 +26,8 @@ namespace ConnectHub.MediaService.Controllers
         }
 
         // POST /api/media/upload
-        // Upload a file to Azure Blob Storage
+        // Upload a file to local storage (fallback) or Azure
+        [Authorize] // Only logged in users can upload
         [HttpPost("upload")]
         public async Task<IActionResult> Upload(
             IFormFile file,
@@ -113,6 +113,7 @@ namespace ConnectHub.MediaService.Controllers
         }
 
         // DELETE /api/media/{fileId}
+        [Authorize] // Only logged in users can delete their files
         [HttpDelete("{fileId}")]
         public async Task<IActionResult> Delete(string fileId)
         {
