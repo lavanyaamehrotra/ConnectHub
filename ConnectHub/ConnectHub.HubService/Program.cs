@@ -66,6 +66,7 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 // Read Redis connection string from config (falls back to localhost for dev)
 // Check multiple possible config keys for Redis
 var redisConnection = builder.Configuration["Redis__ConnectionString"] 
+                    ?? builder.Configuration["REDIS_URL"]
                     ?? builder.Configuration.GetConnectionString("Redis") 
                     ?? "localhost:6379";
 
