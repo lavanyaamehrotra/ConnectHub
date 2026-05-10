@@ -19,7 +19,7 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_ENVIRONMENT=Docker
+ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 5009
 
 ENTRYPOINT ["dotnet", "ConnectHub.GatewayService.dll"]
