@@ -132,13 +132,16 @@ _ = Task.Run(async () =>
 {
     try 
     {
-        using (var scope = app.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            Console.WriteLine("Applying database migrations for MediaService in background...");
-            await db.Database.MigrateAsync();
-            Console.WriteLine("MediaService: Database migration completed successfully!");
-        }
+        await Task.Delay(30000); // 30s delay
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        Console.WriteLine("--- MEDIA SERVICE CLEAN SLATE: Resetting Tables ---");
+        await dbContext.Database.EnsureDeletedAsync();
+
+        Console.WriteLine("Applying database migrations for MediaService in background...");
+        await dbContext.Database.MigrateAsync();
+        Console.WriteLine("MediaService: Database migration completed successfully!");
     }
     catch (Exception ex)
     {
