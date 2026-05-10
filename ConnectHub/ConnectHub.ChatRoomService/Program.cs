@@ -103,23 +103,21 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<GroupChatHub>("/groupChatHub");
 
-// Run migrations in background to prevent startup hang
-_ = Task.Run(async () => 
+// Ensure Database is ready BEFORE app runs
+try 
 {
-    try
-    {
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-        Console.WriteLine("Applying database migrations for ChatRoomService...");
-        await dbContext.Database.MigrateAsync();
-        Console.WriteLine("ChatRoomService: Database migration completed.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"CRITICAL ERROR: ChatRoomService database migration failed: {ex.Message}");
-    }
-});
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("ChatRoomService: NUCLEAR RESET - Resetting database for schema sync...");
+    await dbContext.Database.EnsureDeletedAsync();
+    await dbContext.Database.MigrateAsync();
+    Console.WriteLine("ChatRoomService: Database is READY.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"CRITICAL ERROR during ChatRoomService startup: {ex.Message}");
+}
 
 
 Console.WriteLine("ChatRoom Service running!");

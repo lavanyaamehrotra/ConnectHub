@@ -147,33 +147,29 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ========== 10. AUTO-MIGRATE & CLEANUP DATABASE ==========
-// Run migrations in background to prevent startup hang
-_ = Task.Run(async () => 
+// Ensure Database is ready BEFORE app runs
+try 
 {
-    try 
-    {
-        using (var scope = app.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            
-            Console.WriteLine("Applying database migrations for AuthService in background...");
-            await dbContext.Database.MigrateAsync();
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    Console.WriteLine("AuthService: NUCLEAR RESET - Resetting database for schema sync...");
+    await dbContext.Database.EnsureDeletedAsync();
+    await dbContext.Database.MigrateAsync();
 
-            // Cleanup stale online statuses
-            try {
-                await dbContext.Database.ExecuteSqlRawAsync("UPDATE \"Users\" SET \"IsOnline\" = false");
-                Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
-            } catch (Exception ex) {
-                Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
-            }
-            Console.WriteLine("AuthService: Database migration completed successfully!");
-        }
+    // Cleanup stale online statuses
+    try {
+        await dbContext.Database.ExecuteSqlRawAsync("UPDATE \"Users\" SET \"IsOnline\" = false");
+        Console.WriteLine("Auth Service: Cleaned up stale online statuses.");
+    } catch (Exception ex) {
+        Console.WriteLine($"Auth Service: Cleanup failed: {ex.Message}");
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"CRITICAL ERROR: AuthService migration failed: {ex.Message}");
-    }
-});
+    Console.WriteLine("AuthService: Database is READY.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"CRITICAL ERROR during AuthService startup: {ex.Message}");
+}
 
 
 
