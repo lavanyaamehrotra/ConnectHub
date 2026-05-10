@@ -121,20 +121,25 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Auto-run EF migrations on startup
-try 
+// Run migrations in background to prevent startup hang
+_ = Task.Run(async () => 
 {
-    using (var scope = app.Services.CreateScope())
+    try 
     {
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        Console.WriteLine("Applying database migrations for NotificationService...");
-        db.Database.Migrate();
-        Console.WriteLine("NotificationService migration completed.");
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            Console.WriteLine("Applying database migrations for NotificationService in background...");
+            await db.Database.MigrateAsync();
+            Console.WriteLine("NotificationService: Database migration completed successfully!");
+        }
     }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"WARNING: NotificationService migration failed: {ex.Message}");
-}
+    catch (Exception ex)
+    {
+        Console.WriteLine($"CRITICAL ERROR: NotificationService migration failed: {ex.Message}");
+    }
+});
+
 
 
 app.UseSwagger();

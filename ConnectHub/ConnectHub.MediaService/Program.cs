@@ -127,20 +127,25 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Auto-run EF migrations on startup
-try 
+// Run migrations in background to prevent startup hang
+_ = Task.Run(async () => 
 {
-    using (var scope = app.Services.CreateScope())
+    try 
     {
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        Console.WriteLine("Applying database migrations for MediaService...");
-        db.Database.Migrate();
-        Console.WriteLine("MediaService migration completed.");
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            Console.WriteLine("Applying database migrations for MediaService in background...");
+            await db.Database.MigrateAsync();
+            Console.WriteLine("MediaService: Database migration completed successfully!");
+        }
     }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"WARNING: MediaService migration failed: {ex.Message}");
-}
+    catch (Exception ex)
+    {
+        Console.WriteLine($"CRITICAL ERROR: MediaService migration failed: {ex.Message}");
+    }
+});
+
 
 
 app.UseSwagger();
