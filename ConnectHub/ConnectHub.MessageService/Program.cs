@@ -116,9 +116,6 @@ namespace ConnectHub.MessageService
                     using var scope = app.Services.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     
-                    Console.WriteLine("--- MESSAGE SERVICE CLEAN SLATE: Resetting Tables ---");
-                    await dbContext.Database.EnsureDeletedAsync();
-                    
                     Console.WriteLine("Applying database migrations for MessageService in background...");
                     await dbContext.Database.MigrateAsync();
                     Console.WriteLine("MessageService: Database migration completed successfully!");

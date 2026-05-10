@@ -127,15 +127,14 @@ _ = Task.Run(async () =>
     try
     {
         await Task.Delay(25000); // 25s delay
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        Console.WriteLine("--- NOTIFICATION SERVICE CLEAN SLATE: Resetting Tables ---");
-        await dbContext.Database.EnsureDeletedAsync();
-
-        Console.WriteLine("Applying database migrations for NotificationService in background...");
-        await dbContext.Database.MigrateAsync();
-        Console.WriteLine("NotificationService: Database migration completed successfully!");
+            Console.WriteLine("Applying database migrations for NotificationService in background...");
+            await dbContext.Database.MigrateAsync();
+            Console.WriteLine("NotificationService: Database migration completed successfully!");
+        }
     }
     catch (Exception ex)
     {

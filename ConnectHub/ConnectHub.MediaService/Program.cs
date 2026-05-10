@@ -136,9 +136,6 @@ _ = Task.Run(async () =>
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        Console.WriteLine("--- MEDIA SERVICE CLEAN SLATE: Resetting Tables ---");
-        await dbContext.Database.EnsureDeletedAsync();
-
         Console.WriteLine("Applying database migrations for MediaService in background...");
         await dbContext.Database.MigrateAsync();
         Console.WriteLine("MediaService: Database migration completed successfully!");
