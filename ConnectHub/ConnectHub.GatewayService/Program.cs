@@ -101,6 +101,8 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 
 // Map YARP with error logging
+app.UseWebSockets();
+
 app.MapReverseProxy(proxyPipeline =>
 {
     proxyPipeline.Use(async (context, next) =>
