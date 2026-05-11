@@ -63,25 +63,29 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 // ========== 4. REDIS — UC4 CHANGE ==========
-// Read Redis connection string from config (falls back to localhost for dev)
-// Check multiple possible config keys for Redis
 var redisConnection = builder.Configuration["Redis__ConnectionString"] 
                     ?? builder.Configuration["REDIS_URL"]
                     ?? builder.Configuration.GetConnectionString("Redis") 
                     ?? "localhost:6379";
 
+// Handle redis:// prefix (common on Render/Heroku)
+if (redisConnection.StartsWith("redis://"))
+{
+    redisConnection = redisConnection.Substring(8);
+}
+
 Console.WriteLine($"Attempting to connect to Redis: {redisConnection}");
 
 try {
-    // We use a multiplexer that doesn't "abort" if the server is down
     var options = ConfigurationOptions.Parse(redisConnection);
     options.AbortOnConnectFail = false; 
+    options.ConnectTimeout = 10000; // 10s
     
     var redis = ConnectionMultiplexer.Connect(options);
     builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
-    Console.WriteLine("Redis service registered (may still be connecting in background).");
+    Console.WriteLine("Redis service registered.");
 } catch (Exception ex) {
-    Console.WriteLine($"REDIS CRITICAL ERROR: {ex.Message}. Hub will run but presence will be limited.");
+    Console.WriteLine($"REDIS CRITICAL ERROR: {ex.Message}");
 }
 
 // PresenceService is now backed by Redis (still registered as Singleton)
