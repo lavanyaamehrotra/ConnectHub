@@ -97,19 +97,22 @@ namespace ConnectHub.HubService.Presence
             }
         }
 
-        public async Task<List<string>> GetOnlineUserIdsAsync()
+        public async Task<List<Guid>> GetOnlineUserIdsAsync()
         {
-            var results = new HashSet<string>();
+            var results = new HashSet<Guid>();
 
             // 1. Local Fallback
-            foreach (var id in _localPresence.Keys) results.Add(id.ToString().ToLower());
+            foreach (var id in _localPresence.Keys) results.Add(id);
 
             // 2. Redis
             try
             {
                 var db = _redis.GetDatabase();
                 var members = await db.SetMembersAsync(OnlineUsersSet);
-                foreach (var m in members) results.Add(m.ToString().ToLower());
+                foreach (var m in members)
+                {
+                    if (Guid.TryParse(m.ToString(), out var guid)) results.Add(guid);
+                }
             }
             catch (Exception ex)
             {
