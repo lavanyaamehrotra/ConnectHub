@@ -73,12 +73,12 @@ builder.Services.AddHttpClient("AuthService", client =>
     client.Timeout     = TimeSpan.FromSeconds(10);
 });
 
-// ========== 4. RABBITMQ — publisher + consumer ==========
-// Publisher: Singleton — one persistent connection shared across all requests
-builder.Services.AddSingleton<INotificationPublisher, RabbitMqNotificationPublisher>();
-
-// Consumer: BackgroundService — runs the queue listener for the lifetime of the app
-builder.Services.AddHostedService<NotificationConsumer>();
+// ========== 4. IN-MEMORY NOTIFICATION DISPATCH (Replaces RabbitMQ for reliability) ==========
+// We use System.Threading.Channels to pass events from the API to the background worker
+// This is much more reliable on Render free tier than an external RabbitMQ broker.
+builder.Services.AddSingleton(System.Threading.Channels.Channel.CreateUnbounded<NotificationEvent>());
+builder.Services.AddSingleton<INotificationPublisher, InMemoryNotificationPublisher>();
+builder.Services.AddHostedService<InternalNotificationConsumer>();
 
 // ========== 5. REPOSITORY + SERVICE ==========
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
