@@ -34,29 +34,33 @@ namespace ConnectHub.NotificationService.Services
             {
                 try
                 {
-                    _logger.LogInformation("Processing in-memory notification {Id} for user {UserId}",
-                        evt.NotificationId, evt.RecipientId);
+                    _logger.LogInformation(">>> PROCESSING NOTIFICATION {Id} for User {UserId}", evt.NotificationId, evt.RecipientId);
 
-                    // 1. Badge push
+                    // 1. Badge push (SignalR)
                     await PushBadgeAsync(evt.RecipientId, evt.UnreadCount);
 
-                    // 2. Fetch sender info
+                    // 2. Email Notification
+                    // We only send email for MESSAGE and ROOM_INVITE types by default, or you can send for all
+                    var emailSubject = $"ConnectHub: {evt.Title}";
+                    
+                    // Fetch sender name for better context
                     string senderName = "Someone";
                     if (evt.SenderId.HasValue)
                     {
                         var senderInfo = await GetUserInfoAsync(evt.SenderId.Value);
-                        senderName = senderInfo?.DisplayName ?? senderInfo?.Username ?? "Someone";
+                        if (senderInfo != null)
+                        {
+                            senderName = !string.IsNullOrEmpty(senderInfo.DisplayName) ? senderInfo.DisplayName : senderInfo.Username;
+                        }
                     }
 
-                    // 3. Send email
-                    var emailSubject = $"{senderName} messaged you on ConnectHub";
-                    var emailBody = $"Hi! {senderName} sent you a message: \"{evt.Message}\"\n\nLog in to ConnectHub to reply.";
+                    var emailBody = $"Hi!\n\n{senderName} sent you a message: \"{evt.Message}\"\n\nLog in to ConnectHub to reply.\nhttps://connecthub-frontend-f8dq.onrender.com";
                     
                     await TrySendEmailAsync(evt.RecipientId, emailSubject, emailBody);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing in-memory notification {Id}", evt.NotificationId);
+                    _logger.LogError(ex, "CRITICAL ERROR in InternalNotificationConsumer loop for {Id}", evt.NotificationId);
                 }
             }
         }
@@ -69,15 +73,21 @@ namespace ConnectHub.NotificationService.Services
                 var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                 var client = factory.CreateClient("HubService");
 
-                await client.PostAsJsonAsync("/api/notify/badge", new
+                _logger.LogInformation("Pushing badge count {Count} to HubService for {UserId}...", unreadCount, recipientId);
+                var response = await client.PostAsJsonAsync("/api/notify/badge", new
                 {
                     UserId = recipientId,
                     UnreadCount = unreadCount
                 });
+
+                if (response.IsSuccessStatusCode)
+                    _logger.LogInformation("Badge push successful.");
+                else
+                    _logger.LogWarning("Badge push failed: {Status}", response.StatusCode);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("Badge push failed for {RecipientId}: {Msg}", recipientId, ex.Message);
+                _logger.LogWarning("Badge push exception: {Msg}", ex.Message);
             }
         }
 
@@ -93,35 +103,41 @@ namespace ConnectHub.NotificationService.Services
 
                 if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))
                 {
-                    _logger.LogWarning("SMTP not configured — skipping email for {RecipientId}", recipientId);
+                    _logger.LogWarning("SMTP NOT CONFIGURED in appsettings. Skipping email.");
                     return;
                 }
+
+                _logger.LogInformation("Attempting to send email to user {UserId}...", recipientId);
 
                 var recipientEmail = await GetUserEmailAsync(recipientId);
                 if (string.IsNullOrEmpty(recipientEmail))
                 {
-                    _logger.LogWarning("Could not find email for user {RecipientId}", recipientId);
+                    _logger.LogWarning("ABORT: Could not retrieve email for user {UserId} from AuthService.", recipientId);
                     return;
                 }
 
+                _logger.LogInformation("Recipient email found: {Email}. Connecting to SMTP {Host}:{Port}...", recipientEmail, smtpHost, smtpPort);
+
                 var email = new MimeMessage();
-                email.From.Add(MailboxAddress.Parse(fromEmail));
+                email.From.Add(new MailboxAddress("ConnectHub", fromEmail));
                 email.To.Add(MailboxAddress.Parse(recipientEmail));
                 email.Subject = subject;
                 email.Body = new TextPart("plain") { Text = body };
 
                 using var smtp = new SmtpClient();
+                // Bypass cert validation for Render/Cloud environments to prevent SSL handshake errors
                 smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                
                 await smtp.ConnectAsync(smtpHost, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
                 await smtp.AuthenticateAsync(smtpUser, smtpPass);
                 await smtp.SendAsync(email);
                 await smtp.DisconnectAsync(true);
 
-                _logger.LogInformation("Email successfully sent to {Email}", recipientEmail);
+                _logger.LogInformation("SUCCESS: Email sent to {Email} via {Host}", recipientEmail, smtpHost);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Email dispatch failed for {RecipientId}", recipientId);
+                _logger.LogError(ex, "FAILED to send email to user {UserId}", recipientId);
             }
         }
 
@@ -133,9 +149,15 @@ namespace ConnectHub.NotificationService.Services
                 var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                 var client = factory.CreateClient("AuthService");
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                
+                _logger.LogInformation("Fetching user info from {Url}...", client.BaseAddress + $"api/user/{userId}");
                 return await client.GetFromJsonAsync<UserResponse>($"/api/user/{userId}", options);
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Failed to fetch user info: {Msg}", ex.Message);
+                return null;
+            }
         }
 
         private async Task<string?> GetUserEmailAsync(Guid userId)
@@ -146,10 +168,26 @@ namespace ConnectHub.NotificationService.Services
                 var factory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
                 var client = factory.CreateClient("AuthService");
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var result = await client.GetFromJsonAsync<UserEmailResponse>($"/api/user/{userId}/email", options);
+                
+                var url = $"/api/user/{userId}/email";
+                _logger.LogInformation("Fetching user email from {FullUrl}...", client.BaseAddress + url.TrimStart('/'));
+                
+                var response = await client.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("AuthService returned {Status} for email lookup: {Error}", response.StatusCode, error);
+                    return null;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<UserEmailResponse>(options);
                 return result?.Email;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "EXCEPTION during email lookup for user {UserId}", userId);
+                return null;
+            }
         }
 
         private class UserResponse 
