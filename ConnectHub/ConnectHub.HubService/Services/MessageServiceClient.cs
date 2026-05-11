@@ -40,12 +40,13 @@ namespace ConnectHub.HubService.Services
                     return JsonSerializer.Deserialize<object>(json, _jsonOptions);
                 }
 
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("MessageService returned {StatusCode} for SendMessage: {Error}", response.StatusCode, error);
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("MESSAGE SERVICE FAILURE: Status={Status}, Error={Error}, Sender={Sender}, Receiver={Receiver}", 
+                    response.StatusCode, errorContent, senderId, receiverId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "MessageService.SendMessage CRITICAL FAILURE: {Msg}", ex.Message);
+                _logger.LogError(ex, "MESSAGE SERVICE CRITICAL EXCEPTION: {Msg}", ex.Message);
             }
 
             return null;
