@@ -127,9 +127,12 @@ namespace ConnectHub.HubService.Hubs
             await Clients.Caller.SendAsync("MessageSent", savedMessage);
 
             // Notify if offline
-            if (!await _presenceService.IsUserOnlineAsync(receiverId))
+            var isOnline = await _presenceService.IsUserOnlineAsync(receiverId);
+            _logger.LogInformation("NOTIFICATION CHECK: Recipient {ReceiverId} isOnline={IsOnline}", receiverId, isOnline);
+
+            if (!isOnline)
             {
-                _logger.LogInformation("Recipient {ReceiverId} is offline. Triggering notification...", receiverId);
+                _logger.LogInformation("Recipient {ReceiverId} is OFFLINE. Triggering notification...", receiverId);
                 await _notificationService.SendNotificationAsync(
                     receiverId, 
                     senderId, 
