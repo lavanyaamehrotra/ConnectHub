@@ -63,7 +63,8 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 // ========== 4. REDIS — UC4 CHANGE ==========
-var redisConnection = builder.Configuration["Redis__ConnectionString"] 
+var redisConnection = builder.Configuration["Redis:ConnectionString"]
+                    ?? builder.Configuration["Redis__ConnectionString"]
                     ?? builder.Configuration["REDIS_URL"]
                     ?? builder.Configuration.GetConnectionString("Redis") 
                     ?? "localhost:6379";
