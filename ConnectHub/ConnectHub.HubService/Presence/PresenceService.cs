@@ -2,12 +2,10 @@ using StackExchange.Redis;
 using System.Text.Json;
 using ConnectHub.HubService.Models;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 
 namespace ConnectHub.HubService.Presence
 {
-    // ============================================================
-    // PresenceService with Redis + In-Memory Fallback
-    // ============================================================
     public class PresenceService : IPresenceService
     {
         private readonly IConnectionMultiplexer _redis;
@@ -121,17 +119,46 @@ namespace ConnectHub.HubService.Presence
             return results.ToList();
         }
 
-        // Remaining interface methods implemented with basic logic
         public async Task<List<string>> GetConnectionsByUserIdAsync(Guid userId)
         {
              if (_localPresence.TryGetValue(userId, out var connections)) 
                 lock(connections) return connections.ToList();
-             return new List<string>();
+             
+             try {
+                var db = _redis.GetDatabase();
+                var members = await db.SetMembersAsync(UserKey(userId));
+                return members.Select(m => m.ToString()).ToList();
+             } catch { return new List<string>(); }
         }
 
-        public async Task PurgeStalePresenceAsync() { /* Implementation omitted for brevity */ }
+        public async Task PurgeStalePresenceAsync()
+        {
+            try {
+                var db = _redis.GetDatabase();
+                await db.KeyDeleteAsync(ConnectionsHash);
+                await db.KeyDeleteAsync(OnlineUsersSet);
+            } catch {}
+        }
+
         public async Task<int> GetConnectionCountAsync() => (await GetOnlineUserIdsAsync()).Count;
-        public async Task<List<UserConnection>> GetOnlineUsersInfoAsync() => new List<UserConnection>();
-        public async Task ClearUserConnectionsAsync(Guid userId) { _localPresence.TryRemove(userId, out _); }
+        
+        public async Task<List<UserConnection>> GetOnlineUsersInfoAsync() 
+        {
+            try {
+                var db = _redis.GetDatabase();
+                var entries = await db.HashGetAllAsync(ConnectionsHash);
+                return entries.Select(e => JsonSerializer.Deserialize<UserConnection>(e.Value.ToString())!).ToList();
+            } catch { return new List<UserConnection>(); }
+        }
+
+        public async Task ClearUserConnectionsAsync(Guid userId) 
+        { 
+            _localPresence.TryRemove(userId, out _); 
+            try {
+                var db = _redis.GetDatabase();
+                await db.KeyDeleteAsync(UserKey(userId));
+                await db.SetRemoveAsync(OnlineUsersSet, userId.ToString().ToLower());
+            } catch {}
+        }
     }
 }
