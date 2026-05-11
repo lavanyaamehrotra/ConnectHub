@@ -15,6 +15,7 @@ namespace ConnectHub.HubService.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<ChatRoomServiceClient> _logger;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         public ChatRoomServiceClient(HttpClient httpClient, ILogger<ChatRoomServiceClient> logger)
         {
@@ -23,7 +24,7 @@ namespace ConnectHub.HubService.Services
         }
 
         /// <inheritdoc />
-        public async Task<object> SendRoomMessageAsync(Guid senderId, Guid roomId, string content, string? token = null)
+        public async Task<object?> SendRoomMessageAsync(Guid senderId, Guid roomId, string content, string? token = null)
         {
             try
             {
@@ -37,23 +38,22 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<object>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                        ?? BuildFallback(senderId, roomId, content);
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions);
                 }
 
-                _logger.LogWarning("ChatRoomService returned {StatusCode} for SendRoomMessage", response.StatusCode);
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("ChatRoomService returned {StatusCode} for SendRoomMessage: {Error}", response.StatusCode, error);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("ChatRoomService.SendRoomMessage failed: {Msg}", ex.Message);
+                _logger.LogError(ex, "ChatRoomService.SendRoomMessage CRITICAL FAILURE: {Msg}", ex.Message);
             }
 
-            return BuildFallback(senderId, roomId, content);
+            return null;
         }
 
         /// <inheritdoc />
-        public async Task<object> SendRoomMediaMessageAsync(Guid senderId, Guid roomId, string content, string mediaUrl, string messageType, string? token = null)
+        public async Task<object?> SendRoomMediaMessageAsync(Guid senderId, Guid roomId, string content, string mediaUrl, string messageType, string? token = null)
         {
             try
             {
@@ -67,19 +67,18 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<object>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                        ?? BuildFallback(senderId, roomId, content, mediaUrl, messageType);
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions);
                 }
 
-                _logger.LogWarning("ChatRoomService returned {StatusCode} for SendRoomMediaMessage", response.StatusCode);
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("ChatRoomService returned {StatusCode} for SendRoomMediaMessage: {Error}", response.StatusCode, error);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("ChatRoomService.SendRoomMediaMessage failed: {Msg}", ex.Message);
+                _logger.LogError(ex, "ChatRoomService.SendRoomMediaMessage CRITICAL FAILURE: {Msg}", ex.Message);
             }
 
-            return BuildFallback(senderId, roomId, content, mediaUrl, messageType);
+            return null;
         }
 
         /// <inheritdoc />
@@ -94,8 +93,7 @@ namespace ConnectHub.HubService.Services
                 if (!response.IsSuccessStatusCode) return new List<Guid>();
 
                 var json = await response.Content.ReadAsStringAsync();
-                var rooms = JsonSerializer.Deserialize<List<RoomDto>>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var rooms = JsonSerializer.Deserialize<List<RoomDto>>(json, _jsonOptions);
 
                 return rooms?.Select(r => r.RoomId).ToList() ?? new List<Guid>();
             }
@@ -106,7 +104,7 @@ namespace ConnectHub.HubService.Services
             }
         }
 
-        public async Task<object> UpdateRoomMessageAsync(Guid userId, Guid messageId, string newContent, string? token = null)
+        public async Task<object?> UpdateRoomMessageAsync(Guid userId, Guid messageId, string newContent, string? token = null)
         {
             try
             {
@@ -120,16 +118,14 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<RoomMessageDto>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-                        ?? (object)new { MessageId = messageId, Content = newContent, SenderId = userId };
+                    return JsonSerializer.Deserialize<RoomMessageDto>(json, _jsonOptions);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("ChatRoomService.UpdateRoomMessage failed: {Msg}", ex.Message);
             }
-            return new { MessageId = messageId, Content = newContent, SenderId = userId };
+            return null;
         }
 
         public async Task<Guid?> DeleteRoomMessageAsync(Guid userId, Guid messageId, string? token = null)
@@ -143,8 +139,7 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    var res = JsonSerializer.Deserialize<DeleteResponse>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var res = JsonSerializer.Deserialize<DeleteResponse>(json, _jsonOptions);
                     return res?.RoomId;
                 }
             }
@@ -166,8 +161,7 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    var res = JsonSerializer.Deserialize<MarkReadResponse>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var res = JsonSerializer.Deserialize<MarkReadResponse>(json, _jsonOptions);
                     return res?.FullyRead ?? false;
                 }
             }
@@ -185,17 +179,6 @@ namespace ConnectHub.HubService.Services
                 client.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
-
-        private static object BuildFallback(Guid senderId, Guid roomId, string content, string? mediaUrl = null, string? messageType = null) => new
-        {
-            MessageId = Guid.NewGuid(),
-            SenderId = senderId,
-            RoomId = roomId,
-            Content = content,
-            MediaUrl = mediaUrl,
-            MessageType = messageType ?? "TEXT",
-            SentAt = DateTime.UtcNow
-        };
     }
 
     public class MarkReadResponse

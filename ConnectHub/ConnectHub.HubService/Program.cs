@@ -91,25 +91,25 @@ builder.Services.AddSingleton<IPresenceService, PresenceService>();
 builder.Services.AddHttpClient<IMessageService, MessageServiceClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:MessageService"] ?? "http://localhost:5003");
-    client.Timeout     = TimeSpan.FromSeconds(10);
+    client.Timeout     = TimeSpan.FromSeconds(100);
 });
 
 builder.Services.AddHttpClient<IChatRoomService, ChatRoomServiceClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:ChatRoomService"] ?? "http://chatroom-service:5004");
-    client.Timeout     = TimeSpan.FromSeconds(10);
+    client.Timeout     = TimeSpan.FromSeconds(100);
 });
 
 builder.Services.AddHttpClient<INotificationServiceClient, NotificationServiceClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:NotificationService"] ?? "http://notification-service:5007");
-    client.Timeout     = TimeSpan.FromSeconds(10);
+    client.Timeout     = TimeSpan.FromSeconds(100);
 });
 
 builder.Services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:AuthService"] ?? "http://auth-service:5000");
-    client.Timeout     = TimeSpan.FromSeconds(10);
+    client.Timeout     = TimeSpan.FromSeconds(100);
 });
 
 // ========== 6. SERVICE INTERFACES ==========

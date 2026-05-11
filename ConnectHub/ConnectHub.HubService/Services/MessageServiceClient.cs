@@ -23,7 +23,7 @@ namespace ConnectHub.HubService.Services
         }
 
         /// <inheritdoc />
-        public async Task<object> SendMessageAsync(Guid senderId, Guid receiverId, string content, string? token = null)
+        public async Task<object?> SendMessageAsync(Guid senderId, Guid receiverId, string content, string? token = null)
         {
             try
             {
@@ -37,22 +37,22 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<object>(json, _jsonOptions)
-                        ?? BuildFallback(senderId, receiverId, content);
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions);
                 }
 
-                _logger.LogWarning("MessageService returned {StatusCode} for SendMessage", response.StatusCode);
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("MessageService returned {StatusCode} for SendMessage: {Error}", response.StatusCode, error);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("MessageService.SendMessage failed: {Msg}", ex.Message);
+                _logger.LogError(ex, "MessageService.SendMessage CRITICAL FAILURE: {Msg}", ex.Message);
             }
 
-            return BuildFallback(senderId, receiverId, content);
+            return null;
         }
 
         /// <inheritdoc />
-        public async Task<object> SendMediaMessageAsync(Guid senderId, Guid receiverId, string content, string mediaUrl, string messageType, string? token = null)
+        public async Task<object?> SendMediaMessageAsync(Guid senderId, Guid receiverId, string content, string mediaUrl, string messageType, string? token = null)
         {
             try
             {
@@ -72,18 +72,18 @@ namespace ConnectHub.HubService.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<object>(json, _jsonOptions)
-                        ?? BuildFallback(senderId, receiverId, content, mediaUrl, messageType);
+                    return JsonSerializer.Deserialize<object>(json, _jsonOptions);
                 }
 
-                _logger.LogWarning("MessageService returned {StatusCode} for SendMediaMessage", response.StatusCode);
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("MessageService returned {StatusCode} for SendMediaMessage: {Error}", response.StatusCode, error);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("MessageService.SendMediaMessage failed: {Msg}", ex.Message);
+                _logger.LogError(ex, "MessageService.SendMediaMessage CRITICAL FAILURE: {Msg}", ex.Message);
             }
 
-            return BuildFallback(senderId, receiverId, content, mediaUrl, messageType);
+            return null;
         }
 
         /// <inheritdoc />
@@ -177,17 +177,5 @@ namespace ConnectHub.HubService.Services
                 client.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
-
-        private static object BuildFallback(Guid senderId, Guid receiverId, string content, string? mediaUrl = null, string messageType = "TEXT") => new
-        {
-            MessageId  = Guid.NewGuid(),
-            SenderId   = senderId,
-            ReceiverId = receiverId,
-            Content    = content,
-            MessageType = messageType,
-            MediaUrl   = mediaUrl,
-            IsRead     = false,
-            SentAt     = DateTime.UtcNow
-        };
     }
 }

@@ -116,6 +116,13 @@ namespace ConnectHub.HubService.Hubs
 
             var savedMessage = await _messageService.SendMessageAsync(senderId, receiverId, content, token);
 
+            if (savedMessage == null)
+            {
+                _logger.LogWarning("SendMessageAsync failed for {SenderId} to {ReceiverId}. Notifying caller.", senderId, receiverId);
+                await Clients.Caller.SendAsync("ReceiveError", "Message could not be saved. Please check your connection.");
+                return;
+            }
+
             await Clients.User(receiverId.ToString().ToLower()).SendAsync("ReceiveMessage", savedMessage);
             await Clients.Caller.SendAsync("MessageSent", savedMessage);
 
@@ -150,6 +157,13 @@ namespace ConnectHub.HubService.Hubs
             await _presenceService.UserConnectedAsync(senderId, Context.ConnectionId);
 
             var savedMessage = await _messageService.SendMediaMessageAsync(senderId, receiverId, content, mediaUrl, messageType, token);
+
+            if (savedMessage == null)
+            {
+                _logger.LogWarning("SendMediaMessageAsync failed for {SenderId}. Notifying caller.", senderId);
+                await Clients.Caller.SendAsync("ReceiveError", "Media message could not be saved.");
+                return;
+            }
 
             await Clients.User(receiverId.ToString().ToLower()).SendAsync("ReceiveMessage", savedMessage);
             await Clients.Caller.SendAsync("MessageSent", savedMessage);
@@ -206,6 +220,13 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             var savedMessage = await _roomService.SendRoomMessageAsync(senderId, roomId, content, token);
+
+            if (savedMessage == null)
+            {
+                await Clients.Caller.SendAsync("ReceiveError", "Group message could not be saved.");
+                return;
+            }
+
             await Clients.Group(roomId.ToString().ToLower()).SendAsync("ReceiveRoomMessage", savedMessage);
 
             _logger.LogInformation("Room message from {Sender} in room {RoomId}", senderId, roomId);
@@ -217,6 +238,13 @@ namespace ConnectHub.HubService.Hubs
             var token    = GetAccessToken();
 
             var savedMessage = await _roomService.SendRoomMediaMessageAsync(senderId, roomId, content, mediaUrl, messageType, token);
+
+            if (savedMessage == null)
+            {
+                await Clients.Caller.SendAsync("ReceiveError", "Group media message could not be saved.");
+                return;
+            }
+
             await Clients.Group(roomId.ToString().ToLower()).SendAsync("ReceiveRoomMessage", savedMessage);
 
             _logger.LogInformation("Room media message ({Type}) from {Sender} in room {RoomId}", messageType, senderId, roomId);
