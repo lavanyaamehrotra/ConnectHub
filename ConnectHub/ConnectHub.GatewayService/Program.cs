@@ -97,6 +97,22 @@ builder.Services.AddCors(options =>
 // ========== BUILD ==========
 var app = builder.Build();
 
+app.UseRouting();
+
+// ========== GOOGLE LOGIN & SECURITY HEADERS ==========
+app.Use(async (context, next) =>
+{
+    // Required for Google OAuth Popups to work correctly
+    context.Response.Headers.Append("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    context.Response.Headers.Append("Cross-Origin-Embedder-Policy", "unsafe-none");
+    
+    // Security Best Practices
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    
+    await next();
+});
+
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
