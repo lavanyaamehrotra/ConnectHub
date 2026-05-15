@@ -1,0 +1,262 @@
+<svg width="100%" viewBox="0 0 680 1020" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <!-- Outer system boundary -->
+  <rect x="90" y="30" width="500" height="960" rx="16" fill="#f0faf5" stroke="#1D9E75" stroke-width="1" stroke-dasharray="6 4"/>
+  <text font-size="12" font-weight="600" fill="#0F6E56" x="340" y="22" text-anchor="middle">«system» ConnectHub — Real-Time Chat Platform</text>
+
+  <!-- SECTION HEADERS ROW 1 -->
+  <text font-size="11" font-weight="700" fill="#534AB7" x="185" y="55" text-anchor="middle">Authentication</text>
+  <text font-size="11" font-weight="700" fill="#0F6E56" x="340" y="55" text-anchor="middle">Direct Messaging</text>
+  <text font-size="11" font-weight="700" fill="#993C1D" x="495" y="55" text-anchor="middle">Chat Rooms</text>
+
+  <!-- AUTHENTICATION -->
+  <ellipse cx="185" cy="90" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="185" y="94" text-anchor="middle">Register / Sign Up</text>
+
+  <ellipse cx="185" cy="135" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="185" y="139" text-anchor="middle">Login (Email / OAuth)</text>
+
+  <ellipse cx="185" cy="180" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="185" y="184" text-anchor="middle">Logout / Refresh token</text>
+
+  <ellipse cx="185" cy="225" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="185" y="229" text-anchor="middle">Update profile / avatar</text>
+
+  <ellipse cx="185" cy="270" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="185" y="274" text-anchor="middle">Search users</text>
+
+  <!-- DIRECT MESSAGING -->
+  <ellipse cx="340" cy="90" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="94" text-anchor="middle">Send direct message</text>
+
+  <ellipse cx="340" cy="135" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="139" text-anchor="middle">Receive real-time msg</text>
+
+  <ellipse cx="340" cy="180" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="184" text-anchor="middle">View message history</text>
+
+  <ellipse cx="340" cy="225" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="229" text-anchor="middle">Edit message</text>
+
+  <ellipse cx="340" cy="270" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="274" text-anchor="middle">Delete message</text>
+
+  <ellipse cx="340" cy="315" rx="72" ry="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+  <text font-size="11" fill="#085041" x="340" y="319" text-anchor="middle">Search messages</text>
+
+  <!-- CHAT ROOMS -->
+  <ellipse cx="495" cy="90" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="94" text-anchor="middle">Create / group chat</text>
+
+  <ellipse cx="495" cy="135" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="139" text-anchor="middle">Join / leave room</text>
+
+  <ellipse cx="495" cy="180" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="184" text-anchor="middle">Send room message</text>
+
+  <ellipse cx="495" cy="225" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="229" text-anchor="middle">View room members</text>
+
+  <ellipse cx="495" cy="270" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="274" text-anchor="middle">Manage room settings</text>
+
+  <ellipse cx="495" cy="315" rx="72" ry="18" fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+  <text font-size="11" fill="#712B13" x="495" y="319" text-anchor="middle">Browse public rooms</text>
+
+  <!-- DIVIDER 1 -->
+  <line x1="100" y1="348" x2="580" y2="348" stroke="#aaa" stroke-width="0.5" stroke-dasharray="3 3"/>
+
+  <!-- SECTION HEADERS ROW 2 -->
+  <text font-size="11" font-weight="700" fill="#854F0B" x="185" y="363" text-anchor="middle">Presence &amp; Status</text>
+  <text font-size="11" font-weight="700" fill="#3C3489" x="340" y="363" text-anchor="middle">Media &amp; Files</text>
+  <text font-size="11" font-weight="700" fill="#185FA5" x="495" y="363" text-anchor="middle">Notifications</text>
+
+  <!-- PRESENCE -->
+  <ellipse cx="185" cy="397" rx="72" ry="18" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+  <text font-size="11" fill="#633806" x="185" y="401" text-anchor="middle">Set online / offline</text>
+
+  <ellipse cx="185" cy="440" rx="72" ry="18" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+  <text font-size="11" fill="#633806" x="185" y="444" text-anchor="middle">Typing indicator</text>
+
+  <ellipse cx="185" cy="483" rx="72" ry="18" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+  <text font-size="11" fill="#633806" x="185" y="487" text-anchor="middle">Mark msg read/unread</text>
+
+  <ellipse cx="185" cy="526" rx="72" ry="18" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+  <text font-size="11" fill="#633806" x="185" y="530" text-anchor="middle">View unread count</text>
+
+  <ellipse cx="185" cy="569" rx="72" ry="18" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.8"/>
+  <text font-size="11" fill="#633806" x="185" y="573" text-anchor="middle">View active connections</text>
+
+  <!-- MEDIA -->
+  <ellipse cx="340" cy="397" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="401" text-anchor="middle">Upload image / file</text>
+
+  <ellipse cx="340" cy="440" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="444" text-anchor="middle">File in chat</text>
+
+  <ellipse cx="340" cy="483" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="487" text-anchor="middle">View / download media</text>
+
+  <ellipse cx="340" cy="526" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="530" text-anchor="middle">Send media (SignalR)</text>
+
+  <ellipse cx="340" cy="569" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="573" text-anchor="middle">View room media gallery</text>
+
+  <ellipse cx="340" cy="612" rx="72" ry="18" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+  <text font-size="11" fill="#3C3489" x="340" y="616" text-anchor="middle">Delete uploaded file</text>
+
+  <!-- NOTIFICATIONS -->
+  <ellipse cx="495" cy="397" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="401" text-anchor="middle">Receive message notif.</text>
+
+  <ellipse cx="495" cy="440" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="444" text-anchor="middle">Push notification</text>
+
+  <ellipse cx="495" cy="483" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="487" text-anchor="middle">View notification centre</text>
+
+  <ellipse cx="495" cy="526" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="530" text-anchor="middle">Mark notif. read / all</text>
+
+  <ellipse cx="495" cy="569" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="573" text-anchor="middle">Receive mention / tag</text>
+
+  <ellipse cx="495" cy="612" rx="72" ry="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+  <text font-size="11" fill="#0C447C" x="495" y="616" text-anchor="middle">Unread badge (SignalR)</text>
+
+  <!-- DIVIDER 2 -->
+  <line x1="100" y1="642" x2="580" y2="642" stroke="#aaa" stroke-width="0.5" stroke-dasharray="3 3"/>
+
+  <!-- SECTION HEADERS ROW 3 -->
+  <text font-size="11" font-weight="700" fill="#A32D2D" x="220" y="657" text-anchor="middle">Admin Management</text>
+  <text font-size="11" font-weight="700" fill="#3B6D11" x="460" y="657" text-anchor="middle">System Automation</text>
+
+  <!-- ADMIN MANAGEMENT -->
+  <ellipse cx="220" cy="690" rx="90" ry="18" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.8"/>
+  <text font-size="11" fill="#791F1F" x="220" y="694" text-anchor="middle">Manage users (suspend/delete)</text>
+
+  <ellipse cx="220" cy="733" rx="90" ry="18" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.8"/>
+  <text font-size="11" fill="#791F1F" x="220" y="737" text-anchor="middle">View all rooms / messages</text>
+
+  <ellipse cx="220" cy="776" rx="90" ry="18" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.8"/>
+  <text font-size="11" fill="#791F1F" x="220" y="780" text-anchor="middle">Delete room / message</text>
+
+  <ellipse cx="220" cy="819" rx="90" ry="18" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.8"/>
+  <text font-size="11" fill="#791F1F" x="220" y="823" text-anchor="middle">View platform analytics</text>
+
+  <ellipse cx="220" cy="862" rx="90" ry="18" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.8"/>
+  <text font-size="11" fill="#791F1F" x="220" y="866" text-anchor="middle">View audit logs</text>
+
+  <!-- SYSTEM AUTOMATION -->
+  <ellipse cx="460" cy="690" rx="90" ry="18" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+  <text font-size="11" fill="#27500A" x="460" y="694" text-anchor="middle">Auto online/offline detect</text>
+
+  <ellipse cx="460" cy="733" rx="90" ry="18" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+  <text font-size="11" fill="#27500A" x="460" y="737" text-anchor="middle">Cleanup expired media files</text>
+
+  <ellipse cx="460" cy="776" rx="90" ry="18" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+  <text font-size="11" fill="#27500A" x="460" y="780" text-anchor="middle">Send new message push notif.</text>
+
+  <ellipse cx="460" cy="819" rx="90" ry="18" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+  <text font-size="11" fill="#27500A" x="460" y="823" text-anchor="middle">Send platform notif. (admin)</text>
+
+  <ellipse cx="460" cy="862" rx="90" ry="18" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.8"/>
+  <text font-size="11" fill="#27500A" x="460" y="866" text-anchor="middle">View connection count (RT)</text>
+
+  <!-- ═══ ACTORS ═══ -->
+  <!-- USER (left) -->
+  <circle cx="38" cy="330" r="14" fill="none" stroke="#534AB7" stroke-width="1.5"/>
+  <line x1="38" y1="344" x2="38" y2="380" stroke="#534AB7" stroke-width="1.5"/>
+  <line x1="18" y1="358" x2="58" y2="358" stroke="#534AB7" stroke-width="1.5"/>
+  <line x1="38" y1="380" x2="22" y2="405" stroke="#534AB7" stroke-width="1.5"/>
+  <line x1="38" y1="380" x2="54" y2="405" stroke="#534AB7" stroke-width="1.5"/>
+  <text font-size="12" font-weight="700" fill="#534AB7" x="38" y="422" text-anchor="middle">User</text>
+
+  <!-- GUEST (left bottom) -->
+  <circle cx="38" cy="590" r="14" fill="none" stroke="#888780" stroke-width="1.5"/>
+  <line x1="38" y1="604" x2="38" y2="640" stroke="#888780" stroke-width="1.5"/>
+  <line x1="18" y1="618" x2="58" y2="618" stroke="#888780" stroke-width="1.5"/>
+  <line x1="38" y1="640" x2="22" y2="665" stroke="#888780" stroke-width="1.5"/>
+  <line x1="38" y1="640" x2="54" y2="665" stroke="#888780" stroke-width="1.5"/>
+  <text font-size="12" font-weight="700" fill="#5F5E5A" x="38" y="682" text-anchor="middle">Guest</text>
+
+  <!-- ADMIN (right) -->
+  <circle cx="644" cy="745" r="14" fill="none" stroke="#A32D2D" stroke-width="1.5"/>
+  <line x1="644" y1="759" x2="644" y2="795" stroke="#A32D2D" stroke-width="1.5"/>
+  <line x1="624" y1="773" x2="664" y2="773" stroke="#A32D2D" stroke-width="1.5"/>
+  <line x1="644" y1="795" x2="628" y2="820" stroke="#A32D2D" stroke-width="1.5"/>
+  <line x1="644" y1="795" x2="660" y2="820" stroke="#A32D2D" stroke-width="1.5"/>
+  <text font-size="12" font-weight="700" fill="#A32D2D" x="644" y="836" text-anchor="middle">Admin</text>
+
+  <!-- SYSTEM (right) -->
+  <circle cx="644" cy="450" r="14" fill="none" stroke="#3B6D11" stroke-width="1.5"/>
+  <line x1="644" y1="464" x2="644" y2="500" stroke="#3B6D11" stroke-width="1.5"/>
+  <line x1="624" y1="478" x2="664" y2="478" stroke="#3B6D11" stroke-width="1.5"/>
+  <line x1="644" y1="500" x2="628" y2="525" stroke="#3B6D11" stroke-width="1.5"/>
+  <line x1="644" y1="500" x2="660" y2="525" stroke="#3B6D11" stroke-width="1.5"/>
+  <text font-size="12" font-weight="700" fill="#3B6D11" x="644" y="540" text-anchor="middle">System</text>
+  <text font-size="10" fill="#3B6D11" x="644" y="554" text-anchor="middle">(SignalR/BG)</text>
+
+  <!-- ═══ ASSOCIATION LINES ═══ -->
+  <!-- User -> Auth -->
+  <line x1="52" y1="318" x2="113" y2="90" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="322" x2="113" y2="135" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="326" x2="113" y2="180" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="330" x2="113" y2="225" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="334" x2="113" y2="270" stroke="#534AB7" stroke-width="0.5"/>
+  <!-- User -> DM -->
+  <line x1="52" y1="324" x2="268" y2="90" stroke="#0F6E56" stroke-width="0.5"/>
+  <line x1="52" y1="328" x2="268" y2="135" stroke="#0F6E56" stroke-width="0.5"/>
+  <line x1="52" y1="332" x2="268" y2="180" stroke="#0F6E56" stroke-width="0.5"/>
+  <line x1="52" y1="336" x2="268" y2="225" stroke="#0F6E56" stroke-width="0.5"/>
+  <line x1="52" y1="340" x2="268" y2="270" stroke="#0F6E56" stroke-width="0.5"/>
+  <line x1="52" y1="344" x2="268" y2="315" stroke="#0F6E56" stroke-width="0.5"/>
+  <!-- User -> Chat Rooms -->
+  <line x1="52" y1="326" x2="423" y2="90" stroke="#993C1D" stroke-width="0.5"/>
+  <line x1="52" y1="330" x2="423" y2="135" stroke="#993C1D" stroke-width="0.5"/>
+  <line x1="52" y1="334" x2="423" y2="180" stroke="#993C1D" stroke-width="0.5"/>
+  <line x1="52" y1="338" x2="423" y2="225" stroke="#993C1D" stroke-width="0.5"/>
+  <line x1="52" y1="342" x2="423" y2="315" stroke="#993C1D" stroke-width="0.5"/>
+  <!-- User -> Presence -->
+  <line x1="52" y1="410" x2="113" y2="397" stroke="#854F0B" stroke-width="0.5"/>
+  <line x1="52" y1="415" x2="113" y2="440" stroke="#854F0B" stroke-width="0.5"/>
+  <line x1="52" y1="420" x2="113" y2="483" stroke="#854F0B" stroke-width="0.5"/>
+  <line x1="52" y1="425" x2="113" y2="526" stroke="#854F0B" stroke-width="0.5"/>
+  <!-- User -> Media -->
+  <line x1="52" y1="412" x2="268" y2="397" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="416" x2="268" y2="440" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="420" x2="268" y2="483" stroke="#534AB7" stroke-width="0.5"/>
+  <line x1="52" y1="424" x2="268" y2="526" stroke="#534AB7" stroke-width="0.5"/>
+  <!-- User -> Notifications -->
+  <line x1="52" y1="414" x2="423" y2="397" stroke="#185FA5" stroke-width="0.5"/>
+  <line x1="52" y1="418" x2="423" y2="440" stroke="#185FA5" stroke-width="0.5"/>
+  <line x1="52" y1="422" x2="423" y2="483" stroke="#185FA5" stroke-width="0.5"/>
+  <line x1="52" y1="426" x2="423" y2="526" stroke="#185FA5" stroke-width="0.5"/>
+  <line x1="52" y1="430" x2="423" y2="569" stroke="#185FA5" stroke-width="0.5"/>
+  <!-- Guest -> Register / Login / Browse -->
+  <line x1="52" y1="590" x2="113" y2="90" stroke="#888780" stroke-width="0.5"/>
+  <line x1="52" y1="593" x2="113" y2="135" stroke="#888780" stroke-width="0.5"/>
+  <line x1="52" y1="596" x2="423" y2="315" stroke="#888780" stroke-width="0.5"/>
+  <!-- Admin -> Admin Management -->
+  <line x1="630" y1="750" x2="310" y2="690" stroke="#A32D2D" stroke-width="0.5"/>
+  <line x1="630" y1="754" x2="310" y2="733" stroke="#A32D2D" stroke-width="0.5"/>
+  <line x1="630" y1="758" x2="310" y2="776" stroke="#A32D2D" stroke-width="0.5"/>
+  <line x1="630" y1="762" x2="310" y2="819" stroke="#A32D2D" stroke-width="0.5"/>
+  <line x1="630" y1="766" x2="310" y2="862" stroke="#A32D2D" stroke-width="0.5"/>
+  <!-- Admin -> System Automation -->
+  <line x1="630" y1="748" x2="550" y2="690" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="752" x2="550" y2="733" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="756" x2="550" y2="776" stroke="#3B6D11" stroke-width="0.5"/>
+  <!-- System -> Automation -->
+  <line x1="630" y1="455" x2="550" y2="690" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="459" x2="550" y2="733" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="463" x2="550" y2="776" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="467" x2="550" y2="819" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="471" x2="550" y2="862" stroke="#3B6D11" stroke-width="0.5"/>
+  <!-- System -> Notifications -->
+  <line x1="630" y1="453" x2="567" y2="569" stroke="#3B6D11" stroke-width="0.5"/>
+  <line x1="630" y1="457" x2="567" y2="612" stroke="#3B6D11" stroke-width="0.5"/>
+
+  <!-- CAPTION -->
+  <text font-size="11" font-style="italic" fill="#5F5E5A" x="340" y="998" text-anchor="middle">Figure 1: ConnectHub Real-Time Chat Application (.NET + SignalR) — Use Case Diagram</text>
+</svg>
