@@ -132,7 +132,7 @@ ConnectHub follows a **Microservices Architecture** with the following principle
 ## 📊 Use Case Diagram
 
 <p align="center">
-  <img src="docs/use-case-diagram.svg" alt="ConnectHub Use Case Diagram" width="800" height="1200"/>
+  <img src="docs/use-case-diagram.png" alt="ConnectHub Use Case Diagram" width="100%"/>
 </p>
 ---
 
