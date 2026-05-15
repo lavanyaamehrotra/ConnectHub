@@ -1185,13 +1185,6 @@ For support, email support@connecthub.com or join our Slack channel.
 - [x] File sharing
 - [x] Real-time notifications
 
-### Phase 2 (In Progress)
-- [ ] Voice calling
-- [ ] Video calling
-- [ ] Screen sharing
-- [ ] Message reactions
-- [ ] Message threading
-
 ### Phase 3 (Planned)
 - [ ] End-to-end encryption
 - [ ] Mobile applications (iOS/Android)
