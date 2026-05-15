@@ -130,6 +130,11 @@ ConnectHub follows a **Microservices Architecture** with the following principle
    └──────────┘   └─────────────┘  └────────────┘ └──────────┘
 ```
 
+## 📊 Use Case Diagram
+
+<p align="center">
+  <img src="docs/use-case-diagram.svg" alt="ConnectHub Use Case Diagram" width="100%"/>
+</p>
 ## 🗺️ Use Case Diagram
 
 > **ConnectHub** — Real-Time Chat Platform (.NET / ASP.NET Core + SignalR)
