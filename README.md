@@ -134,17 +134,14 @@ ConnectHub follows a **Microservices Architecture** with the following principle
 <p align="center">
   <img src="docs/use-case-diagram.png" alt="ConnectHub Use Case Diagram" width="100%"/>
 </p>
----
 
 ## 🗺️ High Level Design (HLD)
 
-![HLD Diagram](docs/connecthub-hld.png)
-
----
+![HLD Diagram](ConnectHub/docs/connecthub-hld.png)
 
 ## 🔬 Low Level Design (LLD)
 
-![LLD Diagram](docs/connecthub-lld.png)
+![LLD Diagram](ConnectHub/docs/connecthub-lld.png)
 
 ### Microservice Communication Flow
 
